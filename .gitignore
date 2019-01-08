@@ -1,0 +1,4 @@
+ByteStream/.vs
+ByteStream/*/bin
+ByteStream/*/obj
+*.csproj.user
