@@ -74,7 +74,7 @@ namespace GGL.IO
         }
         public void WriteByteArray(byte[] input, int compressionMode)
         {
-            testSize(input.Length);
+            //testSize(input.Length);
             if (input.Length < 256)
             {
                 WriteByte((byte)(compressionMode + 4));
@@ -94,26 +94,19 @@ namespace GGL.IO
             }
             if (compressionMode == 1)//compres 8bit
             {
-                WriteString("begin [");
-                int lastValue = input[0];
-                int length = 0;
-                for (int i = 0; i < input.Length; i++)
+                byte curValue = input[0], curLength = 0;
+                for (int i = 1; i < input.Length; i++)
                 {
-                    if (lastValue == input[i] && i < input.Length)
+                    if (input[i] != curValue || curValue >= 255)
                     {
-                        WriteString("-");
-                        length++;
+                        data[index++] = curLength;
+                        data[index++] = curValue;
+                        curValue = input[i]; curLength = 0;
                     }
-                    else
-                    {
-                        WriteString(" |" + length + "x" + lastValue);
-                        //data[index++] = length;
-                        //data[index++] = lastValue;
-                        lastValue = input[i];
-                        length = 0;
-                    }
+                    else curLength++;
                 }
-                WriteString("] end");
+                data[index++] = curLength;
+                data[index++] = curValue;
             }
             else if (compressionMode == 2)//direct 4bit
             {
@@ -121,6 +114,7 @@ namespace GGL.IO
                 {
                     data[index++] = (byte)(input[i] << 4 | input[i + 1]);
                 }
+                Console.WriteLine("ok");
             }
             else if (compressionMode == 3)//compres 4bit
             {
@@ -213,6 +207,18 @@ namespace GGL.IO
                 for (int i = 0; i < retData.Length; i++)
                 {
                     retData[i] = data[index++];
+                }
+            }
+            else if (mode == 1)
+            {
+                int curLength = 0;
+                while (curLength < length)
+                {
+                    byte len = data[index++];
+                    byte value = data[index++];
+                    for (int i = 0; i < len + 1; i++)
+                        retData[curLength + i] = value;
+                    curLength += len + 1;
                 }
             }
             else if (mode == 2)
