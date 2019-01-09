@@ -4,6 +4,12 @@ using System.IO;
 
 namespace GGL.IO
 {
+    public enum CompressMode
+    {
+        Auto = -1,
+        None = 0,
+        RLE = 1
+    }
     public class ByteStream
     {
         private byte[] data;
@@ -36,6 +42,12 @@ namespace GGL.IO
         public ByteStream(string path)
         {
             data = File.ReadAllBytes(path);
+            index = 0;// data.Length - 1;
+            endIndex = data.Length;
+        }
+        public ByteStream(byte[] bytes)
+        {
+            data = bytes;
             index = 0;// data.Length - 1;
             endIndex = data.Length;
         }
@@ -72,8 +84,26 @@ namespace GGL.IO
         {
             WriteByteArray(input, 0);
         }
-        public void WriteByteArray(byte[] input, int compressionMode)
+        public void WriteByteArray(byte[] input, CompressMode compressionMode)
         {
+            if (compressionMode == CompressMode.Auto)
+            {
+                byte curValue = input[0];
+                int changes = 1;
+                for (int i = 1; i < input.Length; i++)
+                {
+                    if (input[i] != curValue)
+                    {
+                        changes++;
+                        curValue = input[i];
+                    }
+                }
+                float clutter = changes / (float)input.Length;
+                //Console.WriteLine(clutter);
+                if (clutter >= 0.5) compressionMode = CompressMode.None;
+                else compressionMode = CompressMode.RLE;
+
+            }
             //testSize(input.Length);
             if (input.Length < 256)
             {
@@ -85,39 +115,30 @@ namespace GGL.IO
                 WriteByte((byte)compressionMode);
                 WriteInt((int)input.Length);
             }
-            if (compressionMode == 0)//direct 8bit
+
+            switch (compressionMode)
             {
-                for (int i = 0; i < input.Length; i++)
-                {
-                    data[index++] = input[i];
-                }
-            }
-            if (compressionMode == 1)//compres 8bit
-            {
-                byte curValue = input[0], curLength = 0;
-                for (int i = 1; i < input.Length; i++)
-                {
-                    if (input[i] != curValue || curValue >= 255)
+                case CompressMode.None:
+                    for (int i = 0; i < input.Length; i++)
                     {
-                        data[index++] = curLength;
-                        data[index++] = curValue;
-                        curValue = input[i]; curLength = 0;
+                        data[index++] = input[i];
                     }
-                    else curLength++;
-                }
-                data[index++] = curLength;
-                data[index++] = curValue;
-            }
-            else if (compressionMode == 2)//direct 4bit
-            {
-                for (int i = 0; i < input.Length; i += 2)
-                {
-                    data[index++] = (byte)(input[i] << 4 | input[i + 1]);
-                }
-                Console.WriteLine("ok");
-            }
-            else if (compressionMode == 3)//compres 4bit
-            {
+                    break;
+                case CompressMode.RLE:
+                    byte curValue = input[0], curLength = 0;
+                    for (int i = 1; i < input.Length; i++)
+                    {
+                        if (input[i] != curValue || curLength >= 255)
+                        {
+                            data[index++] = curLength;
+                            data[index++] = curValue;
+                            curValue = input[i]; curLength = 0;
+                        }
+                        else curLength++;
+                    }
+                    data[index++] = curLength;
+                    data[index++] = curValue;
+                    break;
             }
         }
         //public void WriteByteArray(byte[,] input)
@@ -309,9 +330,11 @@ namespace GGL.IO
         {
             index = 0;
         }
-        public byte[] GetData()
+        public byte[] GetBytes()
         {
-            return data;
+            byte[] result = new byte[EndIndex];
+            Array.Copy(data, result, EndIndex);
+            return result;
         }
         public string GetString()
         {
