@@ -47,6 +47,22 @@ namespace ByteStream_Tests
                 if (result) printTest(0);
                 else printTest(1);
             });
+            test("auto select (0,1,0,1..) = None", () =>
+            {
+                byte[] array = new byte[] { 0, 1,0,1,0,1 };
+                byteStream.WriteByteArray(array, CompressMode.Auto);
+                bool result = byteStream.Index == 8;
+                if (result) printTest(0);
+                else printTest(1, "" + byteStream.Index);
+            });
+            test("auto select (0..0,1..1) = RLE", () =>
+            {
+                byte[] array = new byte[] { 0, 0, 0, 1 ,1,1};
+                byteStream.WriteByteArray(array, CompressMode.Auto);
+                bool result = byteStream.Index == 6;
+                if (result) printTest(0);
+                else printTest(1, ""+byteStream.Index);
+            });
             Console.WriteLine();
             
             Console.WriteLine("complex test");

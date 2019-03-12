@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 
 
@@ -36,6 +37,8 @@ namespace GGL.IO
 
         public ByteStream()
         {
+            //datal[7] = 8;
+
             data = new byte[10000000];
             index = 0;
         }
@@ -99,12 +102,10 @@ namespace GGL.IO
                     }
                 }
                 float clutter = changes / (float)input.Length;
-                //Console.WriteLine(clutter);
                 if (clutter >= 0.5) compressionMode = CompressMode.None;
                 else compressionMode = CompressMode.RLE;
 
             }
-            //testSize(input.Length);
             if (input.Length < 256)
             {
                 WriteByte((byte)(compressionMode + 4));
@@ -141,10 +142,6 @@ namespace GGL.IO
                     break;
             }
         }
-        //public void WriteByteArray(byte[,] input)
-        //{
-        //    WriteByteArray(input, 0);
-        //}
         public void WriteIntArray(int[] input)
         {
             WriteInt((int)input.Length);
