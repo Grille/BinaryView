@@ -6,8 +6,8 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{8E3BEF00-9242-409D-968E-0D007BF50FC2}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>ByteStream_Tests</RootNamespace>
-    <AssemblyName>ByteStream_Tests</AssemblyName>
+    <RootNamespace>BinaryView_Tests</RootNamespace>
+    <AssemblyName>BinaryView_Tests</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
@@ -50,9 +50,9 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\ByteStream\ByteStream.csproj">
+    <ProjectReference Include="..\BinaryView\BinaryView.csproj">
       <Project>{24480a54-32ca-45c1-a6f5-57c8742333b7}</Project>
-      <Name>ByteStream</Name>
+      <Name>BinaryView</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

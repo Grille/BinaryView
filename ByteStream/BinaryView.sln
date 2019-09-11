@@ -1,11 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.28307.136
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29230.47
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ByteStream", "ByteStream\ByteStream.csproj", "{24480A54-32CA-45C1-A6F5-57C8742333B7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BinaryView", "BinaryView\BinaryView.csproj", "{24480A54-32CA-45C1-A6F5-57C8742333B7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ByteStream_Tests", "ByteStream_Tests\ByteStream_Tests.csproj", "{8E3BEF00-9242-409D-968E-0D007BF50FC2}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BinaryView_Tests", "BinaryView_Tests\BinaryView_Tests.csproj", "{8E3BEF00-9242-409D-968E-0D007BF50FC2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
