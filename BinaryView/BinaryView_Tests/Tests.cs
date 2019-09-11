@@ -8,11 +8,11 @@ namespace ByteStream_Tests
 {
     static class Tests
     {
-        struct Struct
+        private struct Struct
         {
             public int A;
             public float B;
-            public override string ToString() => "{A:" + A + ";B:" + B+"}";
+            public override string ToString() => "{A:" + A + ";B:" + B + "}";
             public override bool Equals(object obj) => A == ((Struct)obj).A && B == ((Struct)obj).B;
         }
         static int testOkCount = 0, testFailCount = 0, testErrorCount = 0;
@@ -33,7 +33,7 @@ namespace ByteStream_Tests
             testTyp(byteStream.WriteSingle, byteStream.ReadSingle, float.MaxValue);
             testTyp(byteStream.WriteString, byteStream.ReadString, "testString123");
             Console.WriteLine();
-            
+
             Console.WriteLine("test generic types");
             testGTyp(char.MinValue);
             testGTyp(char.MaxValue);
@@ -84,13 +84,13 @@ namespace ByteStream_Tests
                     array[i] = 1;
                 byteStream.WriteByteArray(array, CompressMode.RLE);
                 byteStream.ResetIndex();
-                bool result = isArrayEqual(byteStream.ReadByteArray(),array);
+                bool result = isArrayEqual(byteStream.ReadByteArray(), array);
                 if (result) printTest(0);
                 else printTest(1);
             });
             test("auto select (0,1,0,1..) = None", () =>
             {
-                byte[] array = new byte[] { 0, 1,0,1,0,1 };
+                byte[] array = new byte[] { 0, 1, 0, 1, 0, 1 };
                 byteStream.WriteByteArray(array, CompressMode.Auto);
                 bool result = byteStream.Position == 8;
                 if (result) printTest(0);
@@ -98,7 +98,7 @@ namespace ByteStream_Tests
             });
             test("auto select (0..0,1..1) = RLE", () =>
             {
-                byte[] array = new byte[] { 0, 0, 0, 1 ,1,1};
+                byte[] array = new byte[] { 0, 0, 0, 1, 1, 1 };
                 byteStream.WriteByteArray(array, CompressMode.Auto);
                 bool result = byteStream.Position == 6;
                 if (result) printTest(0);
@@ -173,15 +173,15 @@ namespace ByteStream_Tests
         private static void testTyp<T>(Action<T> write, Func<T> read, T input)
         {
             string typ = typeof(T).Name;
-            test("read/write " + typ+" ("+ input + ")", () =>
-              {
-                  byteStream.ResetIndex();
-                  write(input);
-                  byteStream.ResetIndex();
-                  T result = read();
-                  if (result.Equals(input)) printTest(0);
-                  else printTest(1, "" + result);
-              });
+            test("read/write " + typ + " (" + input + ")", () =>
+            {
+                byteStream.ResetIndex();
+                write(input);
+                byteStream.ResetIndex();
+                T result = read();
+                if (result.Equals(input)) printTest(0);
+                else printTest(1, "" + result);
+            });
         }
         private static void testGTyp<T>(T input) where T : unmanaged
         {
@@ -199,16 +199,16 @@ namespace ByteStream_Tests
         private static void testArray<T>(Action<T[]> write, Func<T[]> read, T[] input)
         {
             string typ = typeof(T).Name;
-            test("read/write " + typ + "[] (" + arrayToString(input)+")", () =>
+            test("read/write " + typ + "[] (" + arrayToString(input) + ")", () =>
             {
                 byteStream.ResetIndex();
                 write(input);
                 byteStream.ResetIndex();
                 T[] result = read();
-                if (input.Length!= result.Length)
-                    printTest(1, "length not equal" + input.Length+"!="+ result.Length);
+                if (input.Length != result.Length)
+                    printTest(1, "length not equal" + input.Length + "!=" + result.Length);
                 if (isArrayEqual(input, result)) printTest(0);
-                else printTest(1, "array("+ arrayToString(result) + ")");
+                else printTest(1, "array(" + arrayToString(result) + ")");
             });
         }
         private static void testGArray<T>(T[] input) where T : unmanaged
@@ -227,21 +227,21 @@ namespace ByteStream_Tests
             });
         }
 
-        private static void testArray<T>(Action<T[],CompressMode> write, CompressMode option, Func<T[]> read, T[] input)
+        private static void testArray<T>(Action<T[], CompressMode> write, CompressMode option, Func<T[]> read, T[] input)
         {
             string typ = typeof(T).Name;
-            test("read/write " + typ + "[] -"+option+" (" + arrayToString(input) + ")", () =>
+            test("read/write " + typ + "[] -" + option + " (" + arrayToString(input) + ")", () =>
             {
                 byteStream.ResetIndex();
-                write(input,option);
+                write(input, option);
                 byteStream.ResetIndex();
                 T[] result = read();
                 if (input.Length != result.Length)
                     printTest(1, "length not equal" + input.Length + "!=" + result.Length);
-                if (isArrayEqual(input,result)) printTest(0);
+                if (isArrayEqual(input, result)) printTest(0);
                 else printTest(1, "array(" + arrayToString(result) + ")");
             });
-            
+
         }
 
         private static void printTest(int state)
@@ -272,7 +272,7 @@ namespace ByteStream_Tests
             if (message != null) Console.Write(" -> " + message);
             Console.WriteLine();
         }
-        private static bool isArrayEqual<T>(T[] array1,T[] array2)
+        private static bool isArrayEqual<T>(T[] array1, T[] array2)
         {
             if (array1.Length != array2.Length)
                 return false;
@@ -287,7 +287,7 @@ namespace ByteStream_Tests
             for (int i = 0; i < array.Length; i++)
             {
                 result += "" + array[i];
-                if (i < array.Length-1) result += ",";
+                if (i < array.Length - 1) result += ",";
             }
             return result;
         }

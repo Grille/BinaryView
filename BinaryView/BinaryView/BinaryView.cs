@@ -13,16 +13,20 @@ namespace GGL.IO
         None = 0,
         RLE = 1
     }
+    /// <summary>
+    /// hallo
+    /// </summary>
     public class BinaryView
     {
         private byte[] readBuffer = new byte[256];
-        public Stream BaseStream;
+        public Stream BaseStream { private set; get; }
 
         public int Position
         {
             get => (int)BaseStream.Position;
             set { BaseStream.Position = value; }
         }
+
         public BinaryView()
         {
             BaseStream = new MemoryStream(10);
@@ -41,6 +45,10 @@ namespace GGL.IO
         }
 
         #region write
+
+        /// <summary>Writes an unmanaged struct to the stream and advances the position by the size of the struct</summary>
+        /// <typeparam name="T"></typeparam> Type of unmanaged struct
+        /// <param name="obj">Strcukt to write</param>
         public unsafe void Write<T>(T obj) where T : unmanaged
         {
             int size = sizeof(T);
@@ -48,24 +56,57 @@ namespace GGL.IO
             if (size == 1) WriteByte(Marshal.ReadByte(ptr, 0));
             else for (int i = 0; i < size; i++) WriteByte(Marshal.ReadByte(ptr, i));
         }
+
+        /// <summary>Writes an array of unmanaged structs to the stream and advances the position by the size of the array and metadata like length</summary>
+        /// <typeparam name="T"></typeparam> Type of unmanaged struct
+        /// <param name="array">Array of unmanaged structs to write</param>
         public void WriteArray<T>(T[] array) where T : unmanaged => WriteArray(array, 0, array.Length);
-        public void WriteArray<T>(T[] array, int offset, int length) where T : unmanaged
+
+        /// <summary>Writes an array of unmanaged structs to the stream and advances the position by the size of the array and metadata like length</summary>
+        /// <typeparam name="T"></typeparam> Type of unmanaged struct
+        /// <param name="array">Array of unmanaged structs to write</param>
+        /// /// <param name="offset">start offset in the array</param>
+        /// /// <param name="count">number of elements to be written</param>
+        public void WriteArray<T>(T[] array, int offset, int count) where T : unmanaged
         {
-            WriteInt32(length);
-            for (int i = 0; i < length; i++) Write(array[i + offset]);
+            WriteInt32(count);
+            for (int i = 0; i < count; i++) Write(array[i + offset]);
         }
 
+        /// <summary>Writes an char to the stream and advances the position by two byte</summary>
         public void WriteChar(char input) => BaseStream.Write(BitConverter.GetBytes(input), 0, sizeof(char));
+
+        /// <summary>Writes an byte to the stream and advances the position by one byte</summary>
         public void WriteByte(byte input) => BaseStream.WriteByte(input);
+
+        /// <summary>Writes an sbyte to the stream and advances the position by one byte</summary>
         public void WriteSByte(sbyte input) => BaseStream.WriteByte((byte)input);
+
+        /// <summary>Writes an ushort to the stream and advances the position by two byte</summary>
         public void WriteUInt16(ushort input) => BaseStream.Write(BitConverter.GetBytes(input), 0, sizeof(ushort));
+
+        /// <summary>Writes an short to the stream and advances the position by two byte</summary>
         public void WriteInt16(short input) => BaseStream.Write(BitConverter.GetBytes(input), 0, sizeof(short));
+
+        /// <summary>Writes an uint to the stream and advances the position by four byte</summary>
         public void WriteUInt32(uint input) => BaseStream.Write(BitConverter.GetBytes(input), 0, sizeof(uint));
+
+        /// <summary>Writes an int to the stream and advances the position by four byte</summary>
         public void WriteInt32(int input) => BaseStream.Write(BitConverter.GetBytes(input), 0, sizeof(int));
+
+        /// <summary>Writes an ulong to the stream and advances the position by eight byte</summary>
         public void WriteUInt64(ulong input) => BaseStream.Write(BitConverter.GetBytes(input), 0, sizeof(ulong));
+
+        /// <summary>Writes an long to the stream and advances the position by eight byte</summary>
         public void WriteInt64(long input) => BaseStream.Write(BitConverter.GetBytes(input), 0, sizeof(long));
+
+        /// <summary>Writes an float to the stream and advances the position by four byte</summary>
         public void WriteSingle(float input) => BaseStream.Write(BitConverter.GetBytes(input), 0, sizeof(float));
+
+        /// <summary>Writes an double to the stream and advances the position by eight byte</summary>
         public void WriteDouble(double input) => BaseStream.Write(BitConverter.GetBytes(input), 0, sizeof(double));
+
+        /// <summary>Writes an decimal to the stream and advances the position by sixteen byte</summary>
         public void WriteDouble(decimal input) => Write(input);
 
         public void WriteByteArray(byte[] input)
@@ -176,53 +217,76 @@ namespace GGL.IO
             for (int i = 0; i < array.Length; i++) array[i + offset] = Read<T>();
         }
 
+        /// <summary>Reads an char from the stream and advances the position by two byte</summary>
         public char ReadChar()
         {
             BaseStream.Read(readBuffer, 0, sizeof(char));
             return BitConverter.ToChar(readBuffer, 0);
         }
+
+        /// <summary>Reads an byte from the stream and advances the position by one byte</summary>
         public byte ReadByte() => (byte)BaseStream.ReadByte();
+
+        /// <summary>Reads an sbyte from the stream and advances the position by one byte</summary>
         public sbyte ReadSByte() => (sbyte)BaseStream.ReadByte();
+
+        /// <summary>Reads an ushort from the stream and advances the position by two byte</summary>
         public ushort ReadUInt16()
         {
             BaseStream.Read(readBuffer, 0, sizeof(ushort));
             return BitConverter.ToUInt16(readBuffer, 0);
         }
+
+        /// <summary>Reads an short from the stream and advances the position by two byte</summary>
         public short ReadInt16()
         {
             BaseStream.Read(readBuffer, 0, sizeof(short));
             return BitConverter.ToInt16(readBuffer, 0);
         }
+
+        /// <summary>Reads an uint from the stream and advances the position by four byte</summary>
         public uint ReadUInt32()
         {
             BaseStream.Read(readBuffer, 0, sizeof(uint));
             return BitConverter.ToUInt32(readBuffer, 0);
         }
+
+        /// <summary>Reads an int from the stream and advances the position by four byte</summary>
         public int ReadInt32()
         {
             BaseStream.Read(readBuffer, 0, sizeof(int));
             return BitConverter.ToInt32(readBuffer, 0);
         }
+
+        /// <summary>Reads an ulong from the stream and advances the position by eight byte</summary>
         public ulong ReadUInt64()
         {
             BaseStream.Read(readBuffer, 0, sizeof(ulong));
             return BitConverter.ToUInt64(readBuffer, 0);
         }
+
+        /// <summary>Reads an long from the stream and advances the position by eight byte</summary>
         public long ReadInt64()
         {
             BaseStream.Read(readBuffer, 0, sizeof(long));
             return BitConverter.ToInt64(readBuffer, 0);
         }
+
+        /// <summary>Reads an float from the stream and advances the position by four byte</summary>
         public float ReadSingle()
         {
             BaseStream.Read(readBuffer, 0, sizeof(float));
             return BitConverter.ToSingle(readBuffer, 0);
         }
+
+        /// <summary>Reads an double from the stream and advances the position by eight byte</summary>
         public double ReadDouble()
         {
             BaseStream.Read(readBuffer, 0, sizeof(double));
             return BitConverter.ToDouble(readBuffer, 0);
         }
+
+        /// <summary>Reads an decimal from the stream and advances the position by sixteen byte</summary>
         public decimal ReadDecimal()
         {
             return Read<decimal>();

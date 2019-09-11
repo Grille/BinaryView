@@ -1,4 +1,4 @@
-ByteStream/.vs
-ByteStream/*/bin
-ByteStream/*/obj
+BinaryView/.vs
+BinaryView/*/bin
+BinaryView/*/obj
 *.csproj.user
