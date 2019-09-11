@@ -33,7 +33,7 @@ namespace ByteStream_Tests
             testTyp(byteStream.WriteSingle, byteStream.ReadSingle, float.MaxValue);
             testTyp(byteStream.WriteString, byteStream.ReadString, "testString123");
             Console.WriteLine();
-
+            
             Console.WriteLine("test generic types");
             testGTyp(char.MinValue);
             testGTyp(char.MaxValue);
@@ -64,14 +64,13 @@ namespace ByteStream_Tests
 
             Console.WriteLine("test arrays");
             testArray(byteStream.WriteByteArray, byteStream.ReadByteArray, new byte[] { 0, 2, 4, 6 });
-            testArray(byteStream.WriteIntArray, byteStream.ReadIntArray, new int[] { 0, -2, 4, -6 });
-            testArray(byteStream.WriteFloatArray, byteStream.ReadFloatArray, new float[] { 0, -2.5f, 4.25f, -6.66f });
             testArray(byteStream.WriteStringArray, byteStream.ReadStringArray, new string[] { "ab", "cd", "ef", "gh" });
             Console.WriteLine();
 
             Console.WriteLine("test generic arrays");
             testGArray(new byte[] { 0, 2, 4, 6 });
             testGArray(new int[] { 0, -2, 4, -6 });
+            testGArray(new float[] { 0, -2.5f, 4.25f, -6.66f });
             testGArray(new Struct[] { new Struct() { A = 42, B = 3.6f }, new Struct() { A = 36, B = 1.666f } });
             Console.WriteLine();
 

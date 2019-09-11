@@ -15,6 +15,7 @@ namespace GGL.IO
     }
     public class BinaryView
     {
+        private byte[] readBuffer = new byte[256];
         public Stream BaseStream;
 
         public int Position
@@ -40,46 +41,33 @@ namespace GGL.IO
         }
 
         #region write
-        public void WriteByte(byte input)
+        public unsafe void Write<T>(T obj) where T : unmanaged
         {
-            BaseStream.WriteByte(input);
+            int size = sizeof(T);
+            var ptr = new IntPtr(&obj);
+            if (size == 1) WriteByte(Marshal.ReadByte(ptr, 0));
+            else for (int i = 0; i < size; i++) WriteByte(Marshal.ReadByte(ptr, i));
         }
-        public void WriteInt16(short input)
+        public void WriteArray<T>(T[] array) where T : unmanaged => WriteArray(array, 0, array.Length);
+        public void WriteArray<T>(T[] array, int offset, int length) where T : unmanaged
         {
-            byte[] value = BitConverter.GetBytes(input);
-            BaseStream.Write(value, 0, sizeof(short));
-        }
-        public void WriteInt32(int input)
-        {
-            byte[] value = BitConverter.GetBytes(input);
-            BaseStream.Write(value, 0, sizeof(int));
-        }
-        public void WriteInt64(long input)
-        {
-            byte[] value = BitConverter.GetBytes(input);
-            BaseStream.Write(value, 0, sizeof(long));
-        }
-        public void WriteSingle(float input)
-        {
-            byte[] value = BitConverter.GetBytes(input);
-            BaseStream.Write(value, 0, sizeof(float));
-        }
-        public void WriteDouble(double input)
-        {
-            byte[] value = BitConverter.GetBytes(input);
-            BaseStream.Write(value, 0, sizeof(double));
-        }
-        public void WriteDouble(decimal input)
-        {
-            Write(input);
+            WriteInt32(length);
+            for (int i = 0; i < length; i++) Write(array[i + offset]);
         }
 
-        public void WriteByteArray(int[] input)
-        {
-            byte[] data = new byte[input.Length];
-            for (int i = 0; i < input.Length; i++) data[i] = (byte)input[i];
-            WriteByteArray(data, 0);
-        }
+        public void WriteChar(char input) => BaseStream.Write(BitConverter.GetBytes(input), 0, sizeof(char));
+        public void WriteByte(byte input) => BaseStream.WriteByte(input);
+        public void WriteSByte(sbyte input) => BaseStream.WriteByte((byte)input);
+        public void WriteUInt16(ushort input) => BaseStream.Write(BitConverter.GetBytes(input), 0, sizeof(ushort));
+        public void WriteInt16(short input) => BaseStream.Write(BitConverter.GetBytes(input), 0, sizeof(short));
+        public void WriteUInt32(uint input) => BaseStream.Write(BitConverter.GetBytes(input), 0, sizeof(uint));
+        public void WriteInt32(int input) => BaseStream.Write(BitConverter.GetBytes(input), 0, sizeof(int));
+        public void WriteUInt64(ulong input) => BaseStream.Write(BitConverter.GetBytes(input), 0, sizeof(ulong));
+        public void WriteInt64(long input) => BaseStream.Write(BitConverter.GetBytes(input), 0, sizeof(long));
+        public void WriteSingle(float input) => BaseStream.Write(BitConverter.GetBytes(input), 0, sizeof(float));
+        public void WriteDouble(double input) => BaseStream.Write(BitConverter.GetBytes(input), 0, sizeof(double));
+        public void WriteDouble(decimal input) => Write(input);
+
         public void WriteByteArray(byte[] input)
         {
             WriteByteArray(input, CompressMode.None);
@@ -140,73 +128,10 @@ namespace GGL.IO
                     break;
             }
         }
-        public unsafe void WriteIntArray(int[] input)
-        {
-            WriteInt32((int)input.Length);
-            for (int i = 0; i < input.Length; i++) WriteInt32(input[i]);
-        }
 
-        public unsafe void Write<T>(T obj) where T : unmanaged
-        {
-            int size = sizeof(T);
-            var ptr = new IntPtr(&obj);
-            if (size == 1) WriteByte(Marshal.ReadByte(ptr, 0));
-            else for (int i = 0; i < size; i++) WriteByte(Marshal.ReadByte(ptr, i));
-        }
-        public void WriteArray<T>(T[] array, int offset = 0, int length = 0) where T : unmanaged
-        {
-            writeArray(array, offset, length, Write);
-        }
-        private void writeArray<T>(T[] array, int offset = 0, int length = 0, Action<T> writer = null) where T : unmanaged
-        {
-            WriteInt32(array.Length);
-            for (int i = 0; i < array.Length; i++) writer(array[i]);
-        }
-
-        public unsafe T Read<T>() where T : unmanaged
-        {
-            int size = sizeof(T);
-            var obj = new T();
-            var ptr = new IntPtr(&obj);
-            for (int i = 0; i < size; i++) Marshal.WriteByte(ptr, i, ReadByte());
-            return obj;
-        }
-        public unsafe T[] ReadArray<T>() where T : unmanaged
-        {
-            int length = ReadInt32();
-            T[] array = new T[length];
-            for (int i = 0; i < array.Length; i++) array[i] = Read<T>();
-            return array;
-        }
-        public unsafe void ReadArray<T>(ref T[] array, int offset = 0) where T : unmanaged
-        {
-            int length = ReadInt32();
-            for (int i = 0; i < array.Length; i++) array[i + offset] = Read<T>();
-        }
-
-        public void WriteIntArray2D(int[,] input)
-        {
-            int width = input.GetLength(0);
-            int height = input.GetLength(1);
-            WriteInt32(width);
-            WriteInt32(height);
-            for (int ix = 0; ix < width; ix++)
-            {
-                for (int iy = 0; iy < height; iy++)
-                {
-                    WriteInt32(input[ix, iy]);
-                }
-            }
-        }
-        public void WriteFloatArray(float[] input)
-        {
-            WriteInt32((int)input.Length);
-            for (int i = 0; i < input.Length; i++) WriteSingle(input[i]);
-        }
         public void WriteString(string input)
         {
             char[] stringData = input.ToCharArray();
-
             if (input.Length < 256)
             {
                 WriteByte(0);
@@ -230,20 +155,77 @@ namespace GGL.IO
         #endregion
 
         #region read
-        public byte ReadByte()
+        public unsafe T Read<T>() where T : unmanaged
         {
-            byte value = (byte)BaseStream.ReadByte();
-            return value;
+            int size = sizeof(T);
+            var obj = new T();
+            var ptr = new IntPtr(&obj);
+            for (int i = 0; i < size; i++) Marshal.WriteByte(ptr, i, ReadByte());
+            return obj;
+        }
+        public unsafe T[] ReadArray<T>() where T : unmanaged
+        {
+            int length = ReadInt32();
+            T[] array = new T[length];
+            for (int i = 0; i < array.Length; i++) array[i] = Read<T>();
+            return array;
+        }
+        public unsafe void ReadArray<T>(ref T[] array, int offset = 0) where T : unmanaged
+        {
+            int length = ReadInt32();
+            for (int i = 0; i < array.Length; i++) array[i + offset] = Read<T>();
+        }
+
+        public char ReadChar()
+        {
+            BaseStream.Read(readBuffer, 0, sizeof(char));
+            return BitConverter.ToChar(readBuffer, 0);
+        }
+        public byte ReadByte() => (byte)BaseStream.ReadByte();
+        public sbyte ReadSByte() => (sbyte)BaseStream.ReadByte();
+        public ushort ReadUInt16()
+        {
+            BaseStream.Read(readBuffer, 0, sizeof(ushort));
+            return BitConverter.ToUInt16(readBuffer, 0);
+        }
+        public short ReadInt16()
+        {
+            BaseStream.Read(readBuffer, 0, sizeof(short));
+            return BitConverter.ToInt16(readBuffer, 0);
+        }
+        public uint ReadUInt32()
+        {
+            BaseStream.Read(readBuffer, 0, sizeof(uint));
+            return BitConverter.ToUInt32(readBuffer, 0);
         }
         public int ReadInt32()
         {
-            return (ReadByte() << 0 | ReadByte() << 8 | ReadByte() << 16 | ReadByte() << 24);
+            BaseStream.Read(readBuffer, 0, sizeof(int));
+            return BitConverter.ToInt32(readBuffer, 0);
+        }
+        public ulong ReadUInt64()
+        {
+            BaseStream.Read(readBuffer, 0, sizeof(ulong));
+            return BitConverter.ToUInt64(readBuffer, 0);
+        }
+        public long ReadInt64()
+        {
+            BaseStream.Read(readBuffer, 0, sizeof(long));
+            return BitConverter.ToInt64(readBuffer, 0);
         }
         public float ReadSingle()
         {
-            byte[] value = new byte[4];
-            BaseStream.Read(value, 0, 4);
-            return BitConverter.ToSingle(value, 0);
+            BaseStream.Read(readBuffer, 0, sizeof(float));
+            return BitConverter.ToSingle(readBuffer, 0);
+        }
+        public double ReadDouble()
+        {
+            BaseStream.Read(readBuffer, 0, sizeof(double));
+            return BitConverter.ToDouble(readBuffer, 0);
+        }
+        public decimal ReadDecimal()
+        {
+            return Read<decimal>();
         }
 
         public byte[] ReadByteArray()
@@ -327,7 +309,6 @@ namespace GGL.IO
             else length = ReadInt32();
 
             char[] retData = new char[length];
-
             for (int i = 0; i < retData.Length; i++)
             {
                 retData[i] = (char)ReadByte();
@@ -347,14 +328,6 @@ namespace GGL.IO
         public void Flush()
         {
             BaseStream.Flush();
-            /*
-            byte[] newData = new byte[size];
-            for (int i = 0; i < Math.Min(data.Length, size); i++)
-            {
-                newData[i] = data[i];
-            }
-            data = newData;
-            */
         }
         public void ResetIndex()
         {
