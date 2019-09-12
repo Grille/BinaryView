@@ -3,9 +3,18 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29230.47
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BinaryView", "BinaryView\BinaryView.csproj", "{AA08218C-CCCE-4B51-B63E-B177B8E9AAD0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BinaryView", "BinaryView\BinaryView.csproj", "{AA08218C-CCCE-4B51-B63E-B177B8E9AAD0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BinaryView_Tests", "BinaryView_Tests\BinaryView_Tests.csproj", "{90A6345A-4A1C-464D-973C-DFA4204A6AB9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BinaryView_Tests", "BinaryView_Tests\BinaryView_Tests.csproj", "{90A6345A-4A1C-464D-973C-DFA4204A6AB9}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{14E1DFCB-0E11-4622-B8EB-C028BDD8C8E9}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+		..\.gitattributes = ..\.gitattributes
+		..\.gitignore = ..\.gitignore
+		..\LICENSE = ..\LICENSE
+		..\README.md = ..\README.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

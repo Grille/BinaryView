@@ -107,7 +107,7 @@ namespace GGL.IO
         public void WriteDouble(double input) => BaseStream.Write(BitConverter.GetBytes(input), 0, sizeof(double));
 
         /// <summary>Writes an decimal to the stream and advances the position by sixteen byte</summary>
-        public void WriteDouble(decimal input) => Write(input);
+        public void WriteDecimal(decimal input) => Write(input);
 
         public void WriteByteArray(byte[] input)
         {
@@ -173,20 +173,34 @@ namespace GGL.IO
         public void WriteString(string input)
         {
             char[] stringData = input.ToCharArray();
-            if (input.Length < 256)
-            {
-                WriteByte(0);
-                WriteByte((byte)input.Length);
-            }
-            else
-            {
-                WriteByte(1);
+
+            int max = 0;
+            for (int i = 0;i< stringData.Length; i++)
+                if (stringData[i] > max) max = stringData[i];
+
+            byte lengthSizeBit = 0;
+            byte charSizeBit = 0;
+
+            if (input.Length > byte.MaxValue)
+                lengthSizeBit = 1;
+            if (max > byte.MaxValue)
+                charSizeBit = 1;
+
+            byte meta = (byte)(lengthSizeBit << 0 | charSizeBit << 1);
+            WriteByte(meta);
+
+
+            if (lengthSizeBit == 1)
                 WriteInt32((int)input.Length);
-            }
-            for (int i = 0; i < stringData.Length; i++)
-            {
-                WriteByte((byte)stringData[i]);
-            }
+            else
+                WriteByte((byte)input.Length);
+
+            if (charSizeBit == 1)
+                for (int i = 0; i < stringData.Length; i++)
+                    WriteChar((char)stringData[i]);
+            else
+                for (int i = 0; i < stringData.Length; i++)
+                    WriteByte((byte)stringData[i]);
         }
         public void WriteStringArray(string[] input)
         {
@@ -367,16 +381,22 @@ namespace GGL.IO
 
         public string ReadString()
         {
-            byte mode = ReadByte();
+            byte meta = ReadByte();
+
+            int lengthSizeBit = (meta >> 0) & 1;
+            int charSizeBit = (meta >> 1) & 1;
+
             int length;
-            if (mode == 0) length = ReadByte();
-            else length = ReadInt32();
+            if (lengthSizeBit == 1) length = ReadInt32();
+            else length = ReadByte();
 
             char[] retData = new char[length];
-            for (int i = 0; i < retData.Length; i++)
-            {
-                retData[i] = (char)ReadByte();
-            }
+            if (charSizeBit == 1)
+                for (int i = 0; i < retData.Length; i++)
+                    retData[i] = (char)ReadChar();
+            else
+                for (int i = 0; i < retData.Length; i++)
+                    retData[i] = (char)ReadByte();
 
             return new string(retData);
         }
@@ -399,7 +419,6 @@ namespace GGL.IO
         }
         public byte[] GetBytes()
         {
-            BaseStream.Flush();
             byte[] result = new byte[BaseStream.Length];
             int backup = Position;
             Position = 0;
