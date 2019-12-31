@@ -67,9 +67,9 @@ namespace ByteStream_Tests
             {
                 byte[] array = new byte[] { 0, 0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0, 1, 2, 3, 4, 5, 4, 3, 2, 1 };
                 binaryView.WriteArray(array);
-                int olength = binaryView.Length;
+                long olength = binaryView.Length;
                 binaryView.Compress();
-                int clength = binaryView.Length;
+                long clength = binaryView.Length;
                 binaryView.Decompress();
                 bool result = olength == binaryView.Length && olength != clength;
                 if (result) printTest(0);
@@ -143,8 +143,8 @@ namespace ByteStream_Tests
                 }
                 catch (Exception e) { printTest(2, e.Message); }
             }
-            binaryView.BaseStream.Position = 0;
-            binaryView.BaseStream.SetLength(0);
+            binaryView.Position = 0;
+            binaryView.Length = 0;
         }
 
         private static void testTyp<T>(Action<T> write, Func<T> read, T value1,T value2)
@@ -157,9 +157,9 @@ namespace ByteStream_Tests
             string typ = typeof(T).Name;
             test("read/write " + typ + " (" + input + ")", () =>
             {
-                binaryView.ResetIndex();
+                binaryView.Position = 0;
                 write(input);
-                binaryView.ResetIndex();
+                binaryView.Position = 0;
                 T result = read();
                 if (result.Equals(input)) printTest(0);
                 else printTest(1, "" + result);
@@ -175,9 +175,9 @@ namespace ByteStream_Tests
             string typ = typeof(T).Name;
             test("read/write " + typ + " (" + input + ")", () =>
             {
-                binaryView.ResetIndex();
+                binaryView.Position = 0;
                 binaryView.Write<T>(input);
-                binaryView.ResetIndex();
+                binaryView.Position = 0;
                 T result = binaryView.Read<T>();
                 if (result.Equals(input)) printTest(0);
                 else printTest(1, "" + result);
@@ -188,9 +188,9 @@ namespace ByteStream_Tests
             string typ = typeof(T).Name;
             test("read/write " + typ + "[] (" + arrayToString(input) + ")", () =>
             {
-                binaryView.ResetIndex();
+                binaryView.Position = 0;
                 write(input);
-                binaryView.ResetIndex();
+                binaryView.Position = 0;
                 T[] result = read();
                 if (input.Length != result.Length)
                     printTest(1, "length not equal" + input.Length + "!=" + result.Length);
@@ -203,32 +203,15 @@ namespace ByteStream_Tests
             string typ = typeof(T).Name;
             test("read/write " + typ + "[] (" + arrayToString(input) + ")", () =>
             {
-                binaryView.ResetIndex();
+                binaryView.Position = 0;
                 binaryView.WriteArray(input);
-                binaryView.ResetIndex();
+                binaryView.Position = 0;
                 T[] result = binaryView.ReadArray<T>();
                 if (input.Length != result.Length)
                     printTest(1, "length not equal" + input.Length + "!=" + result.Length);
                 if (isArrayEqual(input, result)) printTest(0);
                 else printTest(1, "array(" + arrayToString(result) + ")");
             });
-        }
-
-        private static void testArray<T>(Action<T[], CompressMode> write, CompressMode option, Func<T[]> read, T[] input)
-        {
-            string typ = typeof(T).Name;
-            test("read/write " + typ + "[] -" + option + " (" + arrayToString(input) + ")", () =>
-            {
-                binaryView.ResetIndex();
-                write(input, option);
-                binaryView.ResetIndex();
-                T[] result = read();
-                if (input.Length != result.Length)
-                    printTest(1, "length not equal" + input.Length + "!=" + result.Length);
-                if (isArrayEqual(input, result)) printTest(0);
-                else printTest(1, "array(" + arrayToString(result) + ")");
-            });
-
         }
 
         private static void printTest(int state)
