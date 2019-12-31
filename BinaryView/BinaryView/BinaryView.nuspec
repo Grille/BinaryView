@@ -2,14 +2,14 @@
 <package >
   <metadata minClientVersion="2.5">
     <id>GGL.BinaryView</id>
-    <version>0.1.5-alpha</version>
+    <version>0.1.6-alpha</version>
     <title>BinaryView</title>
     <authors>Paul Hirch</authors>
     <owners>Grille</owners>
     <projectUrl>https://github.com/Grille/BinaryView</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <description>class to easily write and read binary data</description>
-    <copyright>Paul Hirch @Copyright 2019</copyright>
+    <description>class to easily write and read binary data from streams</description>
+    <copyright>Copyright 2019 @Paul Hirch</copyright>
   </metadata>
   <files>
     <file src="bin\**" target="build" />

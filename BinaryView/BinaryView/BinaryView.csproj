@@ -3,6 +3,18 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageProjectUrl>https://github.com/Grille/BinaryView</PackageProjectUrl>
+    <Authors>Paul Hirch</Authors>
+    <Company>-</Company>
+    <Description>class to easily write and read binary data from stream</Description>
+    <PackageLicenseExpression></PackageLicenseExpression>
+    <FileVersion>0.1.5.0</FileVersion>
+    <AssemblyVersion>0.1.5.0</AssemblyVersion>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageId>GGL.BinaryView</PackageId>
+    <SignAssembly>false</SignAssembly>
+    <Version>0.1.6</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -14,5 +26,12 @@
     <OutputPath>bin\</OutputPath>
     <DocumentationFile>bin\BinaryView.xml</DocumentationFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\LICENSE">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
+  </ItemGroup>
 
 </Project>

@@ -1,10 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using GGL.IO;
+using System.IO;
+using GGL;
+
 namespace ByteStream_Tests
 {
     static class Tests
@@ -19,12 +16,12 @@ namespace ByteStream_Tests
         static int testOkCount = 0, testFailCount = 0, testErrorCount = 0;
         static BinaryView binaryView;
         private static string text;
-        const bool enableExeptions = false;
+        const bool EnableExeptions = false;
         public static void Run()
         {
             binaryView = new BinaryView();
             Console.WriteLine("Run tests...\n");
-
+            
             Console.WriteLine("test types");
             testTyp(binaryView.WriteChar, binaryView.ReadChar, char.MinValue, char.MaxValue);
             testTyp(binaryView.WriteByte, binaryView.ReadByte, byte.MinValue, byte.MaxValue);
@@ -38,8 +35,8 @@ namespace ByteStream_Tests
             testTyp(binaryView.WriteSingle, binaryView.ReadSingle, float.MinValue, float.MaxValue);
             testTyp(binaryView.WriteDouble, binaryView.ReadDouble, double.MinValue, double.MaxValue);
             testTyp(binaryView.WriteDecimal, binaryView.ReadDecimal, decimal.MinValue, decimal.MaxValue);
-            Console.WriteLine();
             testTyp(binaryView.WriteString, binaryView.ReadString, "TestString123", "Ä'*Ü-.,><%§ÃoÜ╝ô○╝+");
+            Console.WriteLine();
 
             Console.WriteLine("test generic types");
             testGTyp(char.MinValue, char.MaxValue);
@@ -58,47 +55,27 @@ namespace ByteStream_Tests
             Console.WriteLine();
 
             Console.WriteLine("test arrays");
-            testArray(binaryView.WriteByteArray, binaryView.ReadByteArray, new byte[] { 0, 2, 4, 6 });
-            testArray(binaryView.WriteStringArray, binaryView.ReadStringArray, new string[] { "ab", "cd", "ef", "gh" });
-            Console.WriteLine();
-
-            Console.WriteLine("test generic arrays");
             testGArray(new byte[] { 0, 2, 4, 6 });
             testGArray(new int[] { 0, -2, 4, -6 });
             testGArray(new float[] { 0, -2.5f, 4.25f, -6.66f });
             testGArray(new Struct[] { new Struct() { A = 42, B = 3.6f }, new Struct() { A = 36, B = 1.666f } });
+            testArray(binaryView.WriteStringArray, binaryView.ReadStringArray, new string[] { "ab", "cd", "ef", "gh" });
             Console.WriteLine();
 
             Console.WriteLine("test compression");
-            testArray(binaryView.WriteByteArray, CompressMode.None, binaryView.ReadByteArray, new byte[] { 0, 1, 1, 1, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0 });
-            testArray(binaryView.WriteByteArray, CompressMode.RLE, binaryView.ReadByteArray, new byte[] { 0, 1, 1, 1, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0 });
-            test("read/write byte[] -RLE (size > 256)", () =>
+            test("compression", () =>
             {
-                byte[] array = new byte[1000];
-                for (int i = 0; i < array.Length; i++)
-                    array[i] = 1;
-                binaryView.WriteByteArray(array, CompressMode.RLE);
-                binaryView.ResetIndex();
-                bool result = isArrayEqual(binaryView.ReadByteArray(), array);
-                if (result) printTest(0);
-                else printTest(1);
-            });
-            test("auto select (0,1,0,1..) = None", () =>
-            {
-                byte[] array = new byte[] { 0, 1, 0, 1, 0, 1 };
-                binaryView.WriteByteArray(array, CompressMode.Auto);
-                bool result = binaryView.Position == 8;
+                byte[] array = new byte[] { 0, 0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0, 1, 2, 3, 4, 5, 4, 3, 2, 1 };
+                binaryView.WriteArray(array);
+                int olength = binaryView.Length;
+                binaryView.Compress();
+                int clength = binaryView.Length;
+                binaryView.Decompress();
+                bool result = olength == binaryView.Length && olength != clength;
                 if (result) printTest(0);
                 else printTest(1, "" + binaryView.Position);
             });
-            test("auto select (0..0,1..1) = RLE", () =>
-            {
-                byte[] array = new byte[] { 0, 0, 0, 1, 1, 1 };
-                binaryView.WriteByteArray(array, CompressMode.Auto);
-                bool result = binaryView.Position == 6;
-                if (result) printTest(0);
-                else printTest(1, "" + binaryView.Position);
-            });
+
             Console.WriteLine();
 
             Console.WriteLine("complex test");
@@ -121,21 +98,21 @@ namespace ByteStream_Tests
                     binaryView.WriteString("map");
                     binaryView.WriteInt32(size);
                     binaryView.WriteSingle(0.45f);
-                    binaryView.WriteByteArray(mapLayer1, CompressMode.None);
-                    binaryView.WriteByteArray(mapLayer2, CompressMode.RLE);
-                    binaryView.WriteByteArray(mapLayer3, CompressMode.RLE);
-
+                    binaryView.WriteArray(mapLayer1);
+                    binaryView.WriteArray(mapLayer2);
+                    binaryView.WriteArray(mapLayer3);
+                    binaryView.Compress();
                     byte[] file = binaryView.GetBytes();
-
                     binaryView = new BinaryView(file);
 
                     bool result = true;
+                    binaryView.Decompress();
                     result &= binaryView.ReadString() == "map";
                     result &= binaryView.ReadInt32() == size;
                     result &= binaryView.ReadSingle() == 0.45f;
-                    result &= isArrayEqual(mapLayer1, binaryView.ReadByteArray());
-                    result &= isArrayEqual(mapLayer2, binaryView.ReadByteArray());
-                    result &= isArrayEqual(mapLayer3, binaryView.ReadByteArray());
+                    result &= isArrayEqual(mapLayer1, binaryView.ReadArray<byte>());
+                    result &= isArrayEqual(mapLayer2, binaryView.ReadArray<byte>());
+                    result &= isArrayEqual(mapLayer3, binaryView.ReadArray<byte>());
 
                     if (result) printTest(0);
                     else printTest(1);
@@ -154,7 +131,7 @@ namespace ByteStream_Tests
         {
 
             text = name;
-            if (enableExeptions)
+            if (EnableExeptions)
             {
                 method();
             }
@@ -166,7 +143,8 @@ namespace ByteStream_Tests
                 }
                 catch (Exception e) { printTest(2, e.Message); }
             }
-            binaryView.ResetIndex();// = new BinaryView();
+            binaryView.BaseStream.Position = 0;
+            binaryView.BaseStream.SetLength(0);
         }
 
         private static void testTyp<T>(Action<T> write, Func<T> read, T value1,T value2)

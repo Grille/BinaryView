@@ -1,2 +1,2 @@
 # BinaryView
-class to easily write and read binary data
+class to easily write and read binary data from stream
