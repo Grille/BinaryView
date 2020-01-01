@@ -82,38 +82,44 @@ namespace ByteStream_Tests
             int size = 64;
             for (int it = 0; it < 4; it++)
             {
-                test("map " + size, () =>
+                byte[] mapLayer1 = new byte[size];
+                byte[] mapLayer2 = new byte[size];
+                byte[] mapLayer3 = new byte[size];
+                Random rnd = new Random(1);
+                for (int i = 0; i < size; i++)
+                    mapLayer1[i] = (byte)(rnd.NextDouble() * 255f);
+                rnd = new Random(2);
+                for (int i = 0; i < size; i++)
+                    mapLayer2[i] = (byte)(rnd.NextDouble() * 2f);
+
+                test("save map " + size, () =>
                 {
-                    byte[] mapLayer1 = new byte[size];
-                    byte[] mapLayer2 = new byte[size];
-                    byte[] mapLayer3 = new byte[size];
-                    Random rnd = new Random(1);
-                    for (int i = 0; i < size; i++)
-                        mapLayer1[i] = (byte)(rnd.NextDouble() * 255f);
-                    rnd = new Random(2);
-                    for (int i = 0; i < size; i++)
-                        mapLayer2[i] = (byte)(rnd.NextDouble() * 2f);
 
-                    binaryView = new BinaryView();
-                    binaryView.WriteString("map");
-                    binaryView.WriteInt32(size);
-                    binaryView.WriteSingle(0.45f);
-                    binaryView.WriteArray(mapLayer1);
-                    binaryView.WriteArray(mapLayer2);
-                    binaryView.WriteArray(mapLayer3);
-                    binaryView.Compress();
-                    byte[] file = binaryView.GetBytes();
-                    binaryView = new BinaryView(file);
-
+                    using (var binaryView = new BinaryView("test.dat", true))
+                    {
+                        binaryView.WriteString("map");
+                        binaryView.WriteInt32(size);
+                        binaryView.WriteSingle(0.45f);
+                        binaryView.WriteArray(mapLayer1);
+                        binaryView.WriteArray(mapLayer2);
+                        binaryView.WriteArray(mapLayer3);
+                        binaryView.Compress();
+                    }
+                    printTest(0);
+                });
+                test("load map " + size, () =>
+                {
                     bool result = true;
-                    binaryView.Decompress();
-                    result &= binaryView.ReadString() == "map";
-                    result &= binaryView.ReadInt32() == size;
-                    result &= binaryView.ReadSingle() == 0.45f;
-                    result &= isArrayEqual(mapLayer1, binaryView.ReadArray<byte>());
-                    result &= isArrayEqual(mapLayer2, binaryView.ReadArray<byte>());
-                    result &= isArrayEqual(mapLayer3, binaryView.ReadArray<byte>());
-
+                    using (var binaryView = new BinaryView("test.dat", false))
+                    {
+                        binaryView.Decompress();
+                        result &= binaryView.ReadString() == "map";
+                        result &= binaryView.ReadInt32() == size;
+                        result &= binaryView.ReadSingle() == 0.45f;
+                        result &= isArrayEqual(mapLayer1, binaryView.ReadArray<byte>());
+                        result &= isArrayEqual(mapLayer2, binaryView.ReadArray<byte>());
+                        result &= isArrayEqual(mapLayer3, binaryView.ReadArray<byte>());
+                    }
                     if (result) printTest(0);
                     else printTest(1);
                 });

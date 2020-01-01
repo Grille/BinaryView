@@ -22,14 +22,30 @@ namespace GGL
             set => BaseStream.SetLength(value);
         }
 
+        /// <summary>Initialize BinaryView with a empty MemoryStream</summary>
         public BinaryView()
         {
-            BaseStream = new MemoryStream(0);
+            BaseStream = new MemoryStream();
         }
-        public BinaryView(string path)
+        /// <summary>Initialize BinaryView with a FileStream</summary>
+        /// <param name="path">File path</param>
+        /// <param name="useOriginalStream">Use original FileStream or create a new MemoryStream copy</param>
+        public BinaryView(string path, bool useOriginalStream = false)
         {
-            BaseStream = new FileStream(path, FileMode.Open);
+            if (useOriginalStream)
+            {
+                BaseStream = new FileStream(path, FileMode.OpenOrCreate);
+            }
+            else    
+            {
+                BaseStream = new MemoryStream();
+                using (var fileStream = new FileStream(path, FileMode.OpenOrCreate))
+                {
+                    fileStream.CopyTo(BaseStream);
+                }
+            }
         }
+        /// <summary>Initialize BinaryView with a MemoryStream filled with bytes from array</summary>
         public BinaryView(byte[] bytes)
         {
             BaseStream = new MemoryStream(bytes.Length);
@@ -38,6 +54,7 @@ namespace GGL
                 WriteByte(bytes[i]);
             }
         }
+        /// <summary>Initialize BinaryView with a Stream</summary>
         public BinaryView(Stream stream)
         {
             this.BaseStream = stream;
@@ -368,7 +385,6 @@ namespace GGL
             if (!disposedValue)
             {
                 if (disposing) { }
-
                 BaseStream.Dispose();
 
                 disposedValue = true;
