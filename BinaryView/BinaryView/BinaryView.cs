@@ -29,14 +29,10 @@ namespace GGL
         }
         /// <summary>Initialize BinaryView with a FileStream</summary>
         /// <param name="path">File path</param>
-        /// <param name="useOriginalStream">Use original FileStream or create a new MemoryStream copy</param>
-        public BinaryView(string path, bool useOriginalStream = false)
+        /// <param name="useCopy">Use a memory copy to avoid changes to the file</param>
+        public BinaryView(string path, bool useCopy = true)
         {
-            if (useOriginalStream)
-            {
-                BaseStream = new FileStream(path, FileMode.OpenOrCreate);
-            }
-            else    
+            if (useCopy)
             {
                 BaseStream = new MemoryStream();
                 using (var fileStream = new FileStream(path, FileMode.OpenOrCreate))
@@ -44,14 +40,27 @@ namespace GGL
                     fileStream.CopyTo(BaseStream);
                 }
             }
+            else    
+            {
+                BaseStream = new FileStream(path, FileMode.OpenOrCreate);
+            }
         }
         /// <summary>Initialize BinaryView with a MemoryStream filled with bytes from array</summary>
-        public BinaryView(byte[] bytes)
+        /// <param name="bytes">Base array</param>
+        /// <param name="useCopy">Use a memory copy to avoid changes to the array</param>
+        public BinaryView(byte[] bytes, bool useCopy = true)
         {
-            BaseStream = new MemoryStream(bytes.Length);
-            for (int i = 0; i < bytes.Length; i++)
+            if (useCopy)
             {
-                WriteByte(bytes[i]);
+                BaseStream = new MemoryStream(bytes.Length);
+                for (int i = 0; i < bytes.Length; i++)
+                {
+                    WriteByte(bytes[i]);
+                }
+            }
+            else
+            {
+                BaseStream = new MemoryStream(bytes);
             }
         }
         /// <summary>Initialize BinaryView with a Stream</summary>

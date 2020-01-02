@@ -7,14 +7,16 @@
     <PackageProjectUrl>https://github.com/Grille/BinaryView</PackageProjectUrl>
     <Authors>Paul Hirch</Authors>
     <Company>-</Company>
-    <Description>class to easily write and read binary data from stream</Description>
+    <Description>Class to easily write and read binary data from streams</Description>
     <PackageLicenseExpression></PackageLicenseExpression>
-    <FileVersion>0.1.5.0</FileVersion>
-    <AssemblyVersion>0.1.5.0</AssemblyVersion>
+    <FileVersion>1.0</FileVersion>
+    <AssemblyVersion>1.0</AssemblyVersion>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageId>GGL.BinaryView</PackageId>
     <SignAssembly>false</SignAssembly>
-    <Version>0.1.6</Version>
+    <Version>1.0</Version>
+    <RepositoryUrl>https://github.com/Grille/BinaryView</RepositoryUrl>
+    <PackageTags />
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

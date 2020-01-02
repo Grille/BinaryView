@@ -95,7 +95,7 @@ namespace ByteStream_Tests
                 test("save map " + size, () =>
                 {
 
-                    using (var binaryView = new BinaryView("test.dat", true))
+                    using (var binaryView = new BinaryView("test.dat", false))
                     {
                         binaryView.WriteString("map");
                         binaryView.WriteInt32(size);
@@ -110,7 +110,7 @@ namespace ByteStream_Tests
                 test("load map " + size, () =>
                 {
                     bool result = true;
-                    using (var binaryView = new BinaryView("test.dat", false))
+                    using (var binaryView = new BinaryView("test.dat", true))
                     {
                         binaryView.Decompress();
                         result &= binaryView.ReadString() == "map";
