@@ -2,11 +2,13 @@
 Class to easily write and read binary data from streams.<br>
 Available as a [NuGet Package](https://www.nuget.org/packages/GGL.BinaryView/).
 <br>
+
 ## Features
 * Autoincrement of Position
 * Generic functions to write whole arrays or (unmanaged) structs
 * Easy compresion with Deflate
 <br>
+
 ## Examples
 Write
 ```cs
