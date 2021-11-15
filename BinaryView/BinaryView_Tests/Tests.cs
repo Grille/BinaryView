@@ -1,6 +1,6 @@
 ﻿using System;
 using System.IO;
-using GGL;
+using Grille.IO;
 
 namespace ByteStream_Tests
 {
