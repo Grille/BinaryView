@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Drawing;
 using System.IO;
+using System.Runtime.Serialization;
 using Grille.IO;
 
 namespace ByteStream_Tests
@@ -21,7 +23,7 @@ namespace ByteStream_Tests
         {
             binaryView = new BinaryView();
             Console.WriteLine("Run tests...\n");
-            
+
             Console.WriteLine("test types");
             testTyp(binaryView.WriteChar, binaryView.ReadChar, char.MinValue, char.MaxValue);
             testTyp(binaryView.WriteByte, binaryView.ReadByte, byte.MinValue, byte.MaxValue);
@@ -38,7 +40,7 @@ namespace ByteStream_Tests
             testTyp(binaryView.WriteString, binaryView.ReadString, "TestString123", "Ä'*Ü-.,><%§ÃoÜ╝ô○╝+");
             Console.WriteLine();
 
-            Console.WriteLine("test generic types");
+            Console.WriteLine("test unmanaged types");
             testGTyp(char.MinValue, char.MaxValue);
             testGTyp(byte.MinValue, byte.MaxValue);
             testGTyp(sbyte.MinValue, sbyte.MaxValue);
@@ -52,6 +54,18 @@ namespace ByteStream_Tests
             testGTyp(double.MinValue, double.MaxValue);
             testGTyp(decimal.MinValue, decimal.MaxValue);
             testGTyp(new Struct() { A = 42, B = 3.6f });
+            testGTyp(new DateTime(2020, 07, 20, 15, 54, 24));
+            testGTyp(new Point(10, 42));
+            testGTyp(new RectangleF(10, 42, 25.5f, 23));
+            Console.WriteLine();
+
+            Console.WriteLine("test serializable types");
+            testSTyp(42);
+            testSTyp("Hello World");
+            testSTyp(new DateTime(2000, 10, 20));
+            testSTyp(new DateTime(2020, 07, 20, 15, 54, 24));
+            testSTyp(new Point(2000, 10));
+            testSTyp(new RectangleF(10, 42, 25.5f, 23));
             Console.WriteLine();
 
             Console.WriteLine("test arrays");
@@ -80,7 +94,7 @@ namespace ByteStream_Tests
 
             Console.WriteLine("complex test");
             int size = 64;
-            for (int it = 0; it < 4; it++)
+            for (int it = 0; it < 10; it++)
             {
                 byte[] mapLayer1 = new byte[size];
                 byte[] mapLayer2 = new byte[size];
@@ -92,7 +106,7 @@ namespace ByteStream_Tests
                 for (int i = 0; i < size; i++)
                     mapLayer2[i] = (byte)(rnd.NextDouble() * 2f);
 
-                test("save map " + size, () =>
+                test($"save map {size}x{size}", () =>
                 {
 
                     using (var binaryView = new BinaryView("test.dat", false))
@@ -107,7 +121,7 @@ namespace ByteStream_Tests
                     }
                     printTest(0);
                 });
-                test("load map " + size, () =>
+                test($"load map {size}x{size}", () =>
                 {
                     bool result = true;
                     using (var binaryView = new BinaryView("test.dat", true))
@@ -153,7 +167,7 @@ namespace ByteStream_Tests
             binaryView.Length = 0;
         }
 
-        private static void testTyp<T>(Action<T> write, Func<T> read, T value1,T value2)
+        private static void testTyp<T>(Action<T> write, Func<T> read, T value1, T value2)
         {
             testTyp(write, read, value1);
             testTyp(write, read, value2);
@@ -182,10 +196,25 @@ namespace ByteStream_Tests
             test("read/write " + typ + " (" + input + ")", () =>
             {
                 binaryView.Position = 0;
-                binaryView.Write<T>(input);
+                binaryView.Write(input);
+                var size = binaryView.Position;
                 binaryView.Position = 0;
                 T result = binaryView.Read<T>();
-                if (result.Equals(input)) printTest(0);
+                if (result.Equals(input)) printTest(0, size + "b");
+                else printTest(1, "" + result);
+            });
+        }
+        private static void testSTyp<T>(T input)
+        {
+            string typ = typeof(T).Name;
+            test("read/write " + typ + " (" + input + ")", () =>
+            {
+                binaryView.Position = 0;
+                binaryView.Serialize(input);
+                var size = binaryView.Position;
+                binaryView.Position = 0;
+                T result = binaryView.Deserialize<T>();
+                if (result.Equals(input)) printTest(0, size + "b");
                 else printTest(1, "" + result);
             });
         }

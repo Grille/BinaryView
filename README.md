@@ -6,7 +6,7 @@ Available as a [NuGet Package](https://www.nuget.org/packages/GGL.BinaryView/).
 ## Features
 * Autoincrement of Position
 * Generic functions to write whole arrays or (unmanaged) structs
-* Easy compresion with Deflate
+* Easy compresion/decompresion with Deflate
 <br>
 
 ## Examples
@@ -26,7 +26,7 @@ using (var view = new BinaryView("file.bin", false))
 ```
 Read
 ```cs
-//Load a file to read, set useCopy flag to true so that view.Decompress() will not decompress the actually file
+//Load a file to read, set useCopy flag to true so that view.Decompress() will not change/decompress the actual file
 using (var view = new BinaryView("file.bin", true))
 {
     //Decompress the stream at begining so that the data can be read

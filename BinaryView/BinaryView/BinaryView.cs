@@ -3,13 +3,17 @@ using System.IO;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
 using System.Collections.Generic;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Formatters.Binary;
 
 namespace Grille.IO;
 
 public class BinaryView : IDisposable
 {
+
     private byte[] readBuffer = new byte[16];
     public Stream BaseStream { private set; get; }
+    private BinaryFormatter formatter = new BinaryFormatter();
 
     public long Position
     {
@@ -69,6 +73,7 @@ public class BinaryView : IDisposable
         this.BaseStream = stream;
     }
 
+
     #region write
 
     /// <summary>Writes a primitive or unmanaged struct to the stream and increases the position by the size of the struct</summary>
@@ -80,6 +85,15 @@ public class BinaryView : IDisposable
         var ptr = new IntPtr(&obj);
         if (size == 1) WriteByte(Marshal.ReadByte(ptr, 0));
         else for (int i = 0; i < size; i++) WriteByte(Marshal.ReadByte(ptr, i));
+    }
+
+    /// <summary>Writes any object to the stream and increases the position by the size of the struct</summary>
+    /// <typeparam name="T"></typeparam> Type of unmanaged struct
+    /// <param name="obj">Object to write</param>
+    /// <remarks>WARNING Serialize can be very inefficient, use Write() instead when possible!</remarks>
+    public void Serialize<T>(T obj)
+    {
+        formatter.Serialize(BaseStream, obj);
     }
 
     /// <summary>Writes a array of unmanaged structs into the stream and increases the position by the size of the array elements, and 4 bytes for the length</summary>
@@ -176,6 +190,7 @@ public class BinaryView : IDisposable
     }
     #endregion
 
+
     #region read
     /// <summary>Reads a primitive or unmanaged struct from the stream and increases the position by the size of the struct</summary>
     /// <typeparam name="T"></typeparam> Type of unmanaged struct
@@ -187,6 +202,14 @@ public class BinaryView : IDisposable
         for (int i = 0; i < size; i++) Marshal.WriteByte(ptr, i, ReadByte());
         return obj;
     }
+
+    /// <summary>Reads an serialized object from the stream and increases the position by the size of the data</summary>
+    /// <typeparam name="T"></typeparam> Type
+    public T Deserialize<T>()
+    {
+        return (T)formatter.Deserialize(BaseStream);
+    }
+
 
     /// <summary>Reads a array of unmanaged structs from the stream and increases the position by the size of the array elements, and 4 bytes for the length</summary>
     /// <typeparam name="T"></typeparam> Type of unmanaged struct
