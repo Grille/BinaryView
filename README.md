@@ -4,37 +4,45 @@ Available as a [NuGet Package](https://www.nuget.org/packages/GGL.BinaryView/).
 <br>
 
 ## Features
-* Autoincrement of Position
-* Generic functions to write whole arrays or (unmanaged) structs
+* Generic functions to write whole arrays and (unmanaged) structs
 * Easy compresion/decompresion with Deflate
 <br>
 
 ## Examples
+```cs
+using GGL.IO;
+```
 Write
 ```cs
-//Load a file to write, set useCopy flag to false so that changes can written in the file
-using (var view = new BinaryView("file.bin", false))
+//Open a file to write
+using (var view = new BinaryViewWriter("file.bin"))
 {
     //Write data in the file
     view.WriteString(Name);
     view.WriteInt32(Size);
+    
+    //Compress section
+    view.BeginDeflateSection();
+    
     view.WriteArray<byte>(Data);
-
-    //Compress the file at the end
-    view.Compress();
+    
+    view.EndDeflateSection();
 }
 ```
 Read
 ```cs
-//Load a file to read, set useCopy flag to true so that view.Decompress() will not change/decompress the actual file
-using (var view = new BinaryView("file.bin", true))
+//Open a file to read
+using (var view = new BinaryViewReader("file.bin"))
 {
-    //Decompress the stream at begining so that the data can be read
-    view.Decompress();
-
-    //Read the data in reverse order of how they were written
-    Data = view.ReadArray<byte>();
-    Size = view.ReadInt32();
+    //Read the data in same order of how they were written
     Name = view.ReadString();
+    Size = view.ReadInt32();
+    
+    //Decompress section
+    view.BeginDeflateSection();
+    
+    Data = view.ReadArray<byte>();
+    
+    view.EndDeflateSection();
 }
 ```
