@@ -201,28 +201,41 @@ public class BinaryViewWriter : IDisposable
         fs.Dispose();
     }
 
+    public byte[] ToArray()
+    {
+        return ((MemoryStream)baseStream).ToArray();
+    }
+
+    /// <summary>Compress all data with DeflateStream</summary>
     public void CompressAll(CompressionLevel level = CompressionLevel.Optimal)
     {
         writeStream = new MemoryStream();
         deflateLevel = level;
         deflateAllMode = true;
     }
-    /// <summary>Compress data with DeflateStream, position will reset</summary>
-    private void BeginCompressedSection(CompressionLevel level = CompressionLevel.Optimal)
+
+    public void BeginDeflateSection(CompressionLevel level = CompressionLevel.Optimal)
     {
         deflateLevel = level;
         deflateInputStream = new MemoryStream();
         writeStream = deflateInputStream;
     }
 
-    private void EndCompressedSection()
+    public void EndDeflateSection()
     {
-        var 
-        deflateResultStream = new DeflateStream(deflateInputStream, (SysIOC.CompressionLevel)deflateLevel, true);
-        deflateInputStream.CopyTo(baseStream);
-        writeStream = baseStream;
-        deflateResultStream.Dispose();
-        deflateInputStream.Dispose();
+        using (var compressedStream = new MemoryStream())
+        {
+            using (var compressor = new DeflateStream(compressedStream, (SysIOC.CompressionLevel)deflateLevel, true))
+            {
+                writeStream.Seek(0, SeekOrigin.Begin);
+                writeStream.CopyTo(compressor);
+            }
+            writeStream.Dispose();
+            writeStream = baseStream;
+            WriteInt64(compressedStream.Length);
+            compressedStream.Seek(0, SeekOrigin.Begin);
+            compressedStream.CopyTo(baseStream);
+        }
     }
 
     #region IDisposable Support

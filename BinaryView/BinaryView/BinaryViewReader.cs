@@ -204,6 +204,7 @@ public class BinaryViewReader : IDisposable
     }
     #endregion
 
+    /// <summary>Decompress all data with DeflateStream, must be executet before any read operation</summary>
     public void DecompressAll()
     {
         var decompressedStream = new MemoryStream();
@@ -220,21 +221,27 @@ public class BinaryViewReader : IDisposable
         readStream = baseStream;
     }
     /// <summary>Decompress data with DeflateStream, position will reset</summary>
-    private void BeginCompressedSection()
+    public void BeginDeflateSection()
     {
+        long length = ReadInt64();
         var DecompressedStream = new MemoryStream();
 
-        using (var decompressStream = new DeflateStream(baseStream, CompressionMode.Decompress, true))
+        using (var compressedSection = new SubStream(readStream, readStream.Position, length))
         {
-            decompressStream.CopyTo(DecompressedStream);
+            using (var decompressStream = new DeflateStream(compressedSection, CompressionMode.Decompress, true))
+            {
+                decompressStream.CopyTo(DecompressedStream);
+            }
         }
-        baseStream = DecompressedStream;
-        baseStream.Position = 0;
+        readStream = DecompressedStream;
+        readStream.Seek(0, SeekOrigin.Begin);
     }
 
-    private void EndCompressedSection()
+    public void EndDeflateSection()
     {
-
+        // Dispose DecompressedStream
+        readStream.Dispose();
+        readStream = baseStream;
     }
 
     #region IDisposable Support

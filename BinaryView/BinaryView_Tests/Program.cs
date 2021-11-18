@@ -1,13 +1,13 @@
 ﻿using System;
 
-namespace ByteStream_Tests
+namespace BinaryView_Tests;
+
+class Program
 {
-    class Program
+    static void Main(string[] args)
     {
-        static void Main(string[] args)
-        {
-            Tests.Run();
-            Console.ReadKey();
-        }
+        Tests.Run();
+        Console.ReadKey();
     }
 }
+
