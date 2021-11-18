@@ -13,11 +13,33 @@ public class BinaryViewWriter : IDisposable
 {
     private Stream baseStream;
     private Stream writeStream;
-    private Stream deflateResultStream;
     private Stream deflateInputStream;
 
     private bool ownStream = true;
     private bool deflateAllMode = false;
+
+    private LengthPrefix _lengthPrefix = LengthPrefix.UInt32;
+    public LengthPrefix DefaultLengthPrefix { 
+        get => _lengthPrefix; 
+        set {
+            if (value == LengthPrefix.Default)
+                throw new InvalidOperationException("DefaultLengthPrefix can't set to Default!");
+            _lengthPrefix = value;
+        }
+    }
+
+    private CharSizePrefix _charSizePrefix = CharSizePrefix.Char;
+    public CharSizePrefix DefaultCharSizePrefix
+    {
+        get => _charSizePrefix;
+        set
+        {
+            if (value == CharSizePrefix.Default)
+                throw new InvalidOperationException("DefaultCharSizePrefix can't set to Default!");
+            _charSizePrefix = value;
+        }
+    }
+
     private CompressionLevel deflateLevel;
 
     private BinaryFormatter formatter = new BinaryFormatter();
@@ -78,20 +100,25 @@ public class BinaryViewWriter : IDisposable
         formatter.Serialize(writeStream, obj);
     }
 
-    /// <summary>Writes a array of unmanaged structs into the stream and increases the position by the size of the array elements, and 4 bytes for the length</summary>
+    /// <summary>Writes a array of unmanaged structs into the stream and increases the position by the size of the array elements, add prefix for length</summary>
     /// <typeparam name="T"></typeparam> Type of unmanaged struct
     /// <param name="array">Array of unmanaged structs to write</param>
-    public void WriteArray<T>(T[] array) where T : unmanaged => WriteArray(array, 0, array.Length);
+    public void WriteArray<T>(T[] array, LengthPrefix lengthPrefix = LengthPrefix.Default) where T : unmanaged => WriteIList(array, 0, array.Length, lengthPrefix);
 
-    /// <summary>Writes a array of unmanaged structs into the stream and increases the position by the size of the array elements, and 4 bytes for the length</summary>
+    /// <summary>Writes a list of unmanaged structs into the stream and increases the position by the size of the array elements, add prefix for length</summary>
     /// <typeparam name="T"></typeparam> Type of unmanaged struct
-    /// <param name="array">Array of unmanaged structs to write</param>
+    /// <param name="list">Array of unmanaged structs to write</param>
+    public void WriteIList<T>(IList<T> list, LengthPrefix lengthPrefix = LengthPrefix.Default) where T : unmanaged => WriteIList(list, 0, list.Count, lengthPrefix);
+
+    /// <summary>Writes a array of unmanaged structs into the stream and increases the position by the size of the array elements, add prefix for length</summary>
+    /// <typeparam name="T"></typeparam> Type of unmanaged struct
+    /// <param name="list">List of unmanaged structs to write</param>
     /// <param name="offset">start offset in the array</param>
     /// <param name="count">number of elements to be written</param>
-    public void WriteArray<T>(T[] array, int offset, int count) where T : unmanaged
+    public void WriteIList<T>(IList<T> list, int offset, int count, LengthPrefix lengthPrefix = LengthPrefix.Default) where T : unmanaged
     {
-        WriteInt32(count);
-        for (int i = 0; i < count; i++) Write(array[i + offset]);
+        writeLengthPrefix(lengthPrefix, count);
+        for (int i = 0; i < count; i++) Write(list[i + offset]);
     }
 
     /// <summary>Writes a char to the stream and increases the position by two bytes</summary>
@@ -131,44 +158,64 @@ public class BinaryViewWriter : IDisposable
     public void WriteDecimal(decimal input) => Write(input);
 
     /// <summary>Writes a string as char array to the stream</summary>
-    public void WriteString(string input)
+    public void WriteString(string input, LengthPrefix lengthPrefix = LengthPrefix.Default, CharSizePrefix charSizePrefix = CharSizePrefix.Default)
     {
-        char[] stringData = input.ToCharArray();
+        writeLengthPrefix(lengthPrefix, input.Length);
 
-        int max = 0;
-        for (int i = 0; i < stringData.Length; i++)
-            if (stringData[i] > max) max = stringData[i];
+        if (charSizePrefix == CharSizePrefix.Default)
+            charSizePrefix = DefaultCharSizePrefix;
 
-        byte lengthSizeBit = 0;
-        byte charSizeBit = 0;
-
-        if (input.Length > byte.MaxValue)
-            lengthSizeBit = 1;
-        if (max > byte.MaxValue)
-            charSizeBit = 1;
-
-        byte meta = (byte)(lengthSizeBit << 0 | charSizeBit << 1);
-        WriteByte(meta);
-
-
-        if (lengthSizeBit == 1)
-            WriteInt32((int)input.Length);
+        if (charSizePrefix == CharSizePrefix.Char)
+            for (int i = 0; i < input.Length; i++)
+                WriteChar((char)input[i]);
         else
-            WriteByte((byte)input.Length);
-
-        if (charSizeBit == 1)
-            for (int i = 0; i < stringData.Length; i++)
-                WriteChar((char)stringData[i]);
-        else
-            for (int i = 0; i < stringData.Length; i++)
-                WriteByte((byte)stringData[i]);
+            for (int i = 0; i < input.Length; i++)
+                WriteByte((byte)input[i]);
     }
 
     /// <summary>Writes a array of strings</summary>
     public void WriteStringArray(string[] input)
     {
-        WriteInt32((int)input.Length);
-        for (int i = 0; i < input.Length; i++) WriteString(input[i]);
+        writeLengthPrefix(LengthPrefix.UInt32, input.Length);
+        for (int i = 0; i < input.Length; i++) WriteString(input[i], LengthPrefix.UInt32, CharSizePrefix.Char);
+    }
+
+    internal void writeLengthPrefix(LengthPrefix lengthPrefix, long length)
+    {
+        switch (lengthPrefix)
+        {
+            case LengthPrefix.None:
+                return;
+            case LengthPrefix.Default:
+                writeLengthPrefix(DefaultLengthPrefix, length);
+                return;
+            case LengthPrefix.SByte:
+                WriteSByte((sbyte)length);
+                return;
+            case LengthPrefix.Byte:
+                WriteByte((byte)length);
+                return;
+            case LengthPrefix.Int16:
+                WriteInt16((short)length);
+                return;
+            case LengthPrefix.UInt16:
+                WriteUInt16((ushort)length);
+                return;
+            case LengthPrefix.Int32:
+                WriteInt32((int)length);
+                return;
+            case LengthPrefix.UInt32:
+                WriteUInt32((uint)length);
+                return;
+            case LengthPrefix.Int64:
+                WriteInt64((long)length);
+                return;
+            case LengthPrefix.UInt64:
+                WriteUInt64((ulong)length);
+                return;
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
     }
     #endregion
 
@@ -245,7 +292,8 @@ public class BinaryViewWriter : IDisposable
     {
         if (!disposedValue)
         {
-            if (disposing) {
+            if (disposing)
+            {
                 Close();
             }
             if (ownStream)

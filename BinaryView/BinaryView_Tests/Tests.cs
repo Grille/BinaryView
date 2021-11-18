@@ -2,6 +2,7 @@
 using System.Drawing;
 using System.IO;
 using System.Runtime.Serialization;
+using System.Collections.Generic;
 using GGL.IO;
 
 namespace BinaryView_Tests;
@@ -34,7 +35,12 @@ static class Tests
         testTyp(bw.WriteSingle, br.ReadSingle, float.MinValue, float.MaxValue);
         testTyp(bw.WriteDouble, br.ReadDouble, double.MinValue, double.MaxValue);
         testTyp(bw.WriteDecimal, br.ReadDecimal, decimal.MinValue, decimal.MaxValue);
-        testTyp(bw.WriteString, br.ReadString, "TestString123", "Ä'*Ü-.,><%§ÃoÜ╝ô○╝+");
+
+        TUtils.WriteTitle("test string");
+        testString("TestString123", LengthPrefix.Default, CharSizePrefix.Default);
+        testString("TestString123", LengthPrefix.Byte, CharSizePrefix.Byte);
+        testString("TestString123",LengthPrefix.UInt32, CharSizePrefix.Char);
+        testString("Ä'*Ü-.,><%§ÃoÜ╝ô○╝+");
 
         TUtils.WriteTitle("test unmanaged types");
         testGTyp(char.MinValue, char.MaxValue);
@@ -64,10 +70,14 @@ static class Tests
 
         TUtils.WriteTitle("test arrays");
         testGArray(new byte[] { 0, 2, 4, 6 });
+        testGArray(new byte[] { 0, 2, 4, 6 }, LengthPrefix.Int64);
         testGArray(new int[] { 0, -2, 4, -6 });
         testGArray(new float[] { 0, -2.5f, 4.25f, -6.66f });
         testGArray(new TUtils.Struct[] { new TUtils.Struct() { A = 42, B = 3.6f }, new TUtils.Struct() { A = 36, B = 1.666f } });
         testArray(bw.WriteStringArray, br.ReadStringArray, new string[] { "ab", "cd", "ef", "gh" });
+
+        TUtils.WriteTitle("test IList");
+        testLists();
 
         TUtils.WriteTitle("test compresion");
         testCompression();
@@ -109,6 +119,29 @@ static class Tests
             }
         });
     }
+
+    private static void testString(string str, LengthPrefix lengthPrefix = LengthPrefix.Default, CharSizePrefix charSizePrefix = CharSizePrefix.Default)
+    {
+        TUtils.Test($"read/write string[{charSizePrefix}].length:{lengthPrefix} ({str})", () =>
+        {
+            bw.Position = 0;
+            bw.WriteString(str, lengthPrefix, charSizePrefix);
+            bw.Position = 0;
+            string result = br.ReadString(lengthPrefix, charSizePrefix);
+            if (result.Equals(str))
+            {
+                TUtils.WriteSucces("OK");
+                return TestResult.Success;
+            }
+
+            else
+            {
+                TUtils.WriteFail($"FAIL \"{result}\"");
+                return TestResult.Failure;
+            }
+        });
+    }
+
     private static void testGTyp<T>(T value1, T value2) where T : unmanaged
     {
         testGTyp(value1);
@@ -158,10 +191,10 @@ static class Tests
             }
         });
     }
-    private static void testArray<T>(Action<T[]> write, Func<T[]> read, T[] input)
+    private static void testArray<T>(Action<T[]> write, Func<T[]> read, T[] input, LengthPrefix lengthPrefix = LengthPrefix.Default)
     {
         string typ = typeof(T).Name;
-        TUtils.Test("read/write " + typ + "[] (" + TUtils.ArrayToString(input) + ")", () =>
+        TUtils.Test("read/write " + typ + "[] (" + TUtils.IListToString(input) + ")", () =>
         {
             bw.Position = 0;
             write(input);
@@ -172,45 +205,99 @@ static class Tests
                 TUtils.WriteFail($"FAIL length not equal{input.Length}!={result.Length}");
                 return TestResult.Failure;
             }
-            if (TUtils.IsArrayEqual(input, result))
+            if (TUtils.IsIListEqual(input, result))
             {
                 TUtils.WriteSucces($"OK");
                 return TestResult.Success;
             }
             else
             {
-                TUtils.WriteFail($"FAIL array({TUtils.ArrayToString(result)})");
+                TUtils.WriteFail($"FAIL array({TUtils.IListToString(result)})");
                 return TestResult.Failure;
             }
         });
     }
-    private static void testGArray<T>(T[] input) where T : unmanaged
+    private static void testGArray<T>(T[] input, LengthPrefix lengthPrefix = LengthPrefix.Int32) where T : unmanaged
     {
         string typ = typeof(T).Name;
-        TUtils.Test("read/write " + typ + "[] (" + TUtils.ArrayToString(input) + ")", () =>
+        TUtils.Test($"read/write {typ}[].length:{lengthPrefix} ({TUtils.IListToString(input)})", () =>
         {
             bw.Position = 0;
-            bw.WriteArray(input);
+            bw.WriteArray(input, lengthPrefix);
             bw.Position = 0;
-            T[] result = br.ReadArray<T>();
+            T[] result = br.ReadArray<T>(lengthPrefix);
             if (input.Length != result.Length)
             {
                 TUtils.WriteFail($"FAIL length not equal{input.Length}!={result.Length}");
                 return TestResult.Failure;
             }
-            if (TUtils.IsArrayEqual(input, result))
+            if (TUtils.IsIListEqual(input, result))
             {
                 TUtils.WriteSucces($"OK");
                 return TestResult.Success;
             }
             else
             {
-                TUtils.WriteFail($"FAIL array({TUtils.ArrayToString(result)})");
+                TUtils.WriteFail($"FAIL array({TUtils.IListToString(result)})");
                 return TestResult.Failure;
             }
         });
     }
 
+    private static void testLists()
+    {
+        int size = 8;
+
+        Random rnd = new Random(1);
+
+        byte[] data0 = new byte[size];
+        for (int i = 0; i < size; i++)
+            data0[i] = (byte)(rnd.NextDouble() * 255f);
+
+        TUtils.Test("Read to new List", () =>
+        {
+            var bw = new BinaryViewWriter();
+            bw.WriteIList(data0);
+            bw.Dispose();
+            var file = bw.ToArray();
+
+            var br = new BinaryViewReader(file);
+            var list = new List<byte>();
+            br.ReadToIList(list);
+            br.Dispose();
+
+            if (!TUtils.IsIListEqual(data0, list))
+            {
+                TUtils.WriteFail($"FAIL data: {TUtils.IListToString(list)}, expected: {TUtils.IListToString(data0)}");
+                return TestResult.Failure;
+            }
+
+            TUtils.WriteSucces($"OK");
+            return TestResult.Success;
+        });
+
+        TUtils.Test("Read no Prefix", () =>
+        {
+            var bw = new BinaryViewWriter();
+            bw.WriteIList(data0, LengthPrefix.None);
+            bw.Dispose();
+            var file = bw.ToArray();
+
+            var br = new BinaryViewReader(file);
+            var list = new List<byte>();
+            br.ReadToIList(list, 0, size);
+            br.Dispose();
+
+            if (!TUtils.IsIListEqual(data0, list))
+            {
+                TUtils.WriteFail($"FAIL data: {TUtils.IListToString(list)}, expected: {TUtils.IListToString(data0)}");
+                return TestResult.Failure;
+            }
+
+            TUtils.WriteSucces($"OK");
+            return TestResult.Success;
+        });
+    }
     private static void testCompression()
     {
         int size = 8;
@@ -246,9 +333,9 @@ static class Tests
             var rdata0 = br.ReadArray<byte>();
             br.Dispose();
 
-            if (!TUtils.IsArrayEqual(data0, rdata0))
+            if (!TUtils.IsIListEqual(data0, rdata0))
             {
-                TUtils.WriteFail($"FAIL data: {TUtils.ArrayToString(rdata0)}, expected: {TUtils.ArrayToString(data0)}");
+                TUtils.WriteFail($"FAIL data: {TUtils.IListToString(rdata0)}, expected: {TUtils.IListToString(data0)}");
                 return TestResult.Failure;
             }
             TUtils.WriteSucces($"OK");
@@ -276,9 +363,9 @@ static class Tests
             br.EndDeflateSection();
             br.Dispose();
 
-            if (!TUtils.IsArrayEqual(data0, rdata0)) 
+            if (!TUtils.IsIListEqual(data0, rdata0)) 
             { 
-                TUtils.WriteFail($"FAIL data: {TUtils.ArrayToString(rdata0)}, expected: {TUtils.ArrayToString(data0)}");
+                TUtils.WriteFail($"FAIL data: {TUtils.IListToString(rdata0)}, expected: {TUtils.IListToString(data0)}");
                 return TestResult.Failure;
             }
             TUtils.WriteSucces($"OK");
@@ -314,19 +401,19 @@ static class Tests
             br.EndDeflateSection();
             br.Dispose();
 
-            if (!TUtils.IsArrayEqual(data0, rdata0))
+            if (!TUtils.IsIListEqual(data0, rdata0))
             {
-                TUtils.WriteFail($"FAIL data0: {TUtils.ArrayToString(rdata0)}, expected: {TUtils.ArrayToString(data0)}");
+                TUtils.WriteFail($"FAIL data0: {TUtils.IListToString(rdata0)}, expected: {TUtils.IListToString(data0)}");
                 return TestResult.Failure;
             }
-            if (!TUtils.IsArrayEqual(data1, rdata1))
+            if (!TUtils.IsIListEqual(data1, rdata1))
             {
-                TUtils.WriteFail($"FAIL data1: {TUtils.ArrayToString(rdata1)}, expected: {TUtils.ArrayToString(data1)}");
+                TUtils.WriteFail($"FAIL data1: {TUtils.IListToString(rdata1)}, expected: {TUtils.IListToString(data1)}");
                 return TestResult.Failure;
             }
-            if (!TUtils.IsArrayEqual(data2, rdata2))
+            if (!TUtils.IsIListEqual(data2, rdata2))
             {
-                TUtils.WriteFail($"FAIL data2: {TUtils.ArrayToString(rdata2)}, expected: {TUtils.ArrayToString(data2)}");
+                TUtils.WriteFail($"FAIL data2: {TUtils.IListToString(rdata2)}, expected: {TUtils.IListToString(data2)}");
                 return TestResult.Failure;
             }
             TUtils.WriteSucces($"OK");
@@ -376,9 +463,9 @@ static class Tests
                     result &= binaryView.ReadString() == "map";
                     result &= binaryView.ReadInt32() == size;
                     result &= binaryView.ReadSingle() == 0.45f;
-                    result &= TUtils.IsArrayEqual(mapLayer1, binaryView.ReadArray<byte>());
-                    result &= TUtils.IsArrayEqual(mapLayer2, binaryView.ReadArray<byte>());
-                    result &= TUtils.IsArrayEqual(mapLayer3, binaryView.ReadArray<byte>());
+                    result &= TUtils.IsIListEqual(mapLayer1, binaryView.ReadArray<byte>());
+                    result &= TUtils.IsIListEqual(mapLayer2, binaryView.ReadArray<byte>());
+                    result &= TUtils.IsIListEqual(mapLayer3, binaryView.ReadArray<byte>());
                 }
                 if (result)
                 {

@@ -29,6 +29,30 @@ public class BinaryViewReader : IDisposable
         set => readStream.SetLength(value);
     }
 
+    private LengthPrefix _lengthPrefix = LengthPrefix.UInt32;
+    public LengthPrefix DefaultLengthPrefix
+    {
+        get => _lengthPrefix;
+        set
+        {
+            if (value == LengthPrefix.Default)
+                throw new InvalidOperationException("DefaultLengthPrefix can't set to Default!");
+            _lengthPrefix = value;
+        }
+    }
+
+    private CharSizePrefix _charSizePrefix = CharSizePrefix.Char;
+    public CharSizePrefix DefaultCharSizePrefix
+    {
+        get => _charSizePrefix;
+        set
+        {
+            if (value == CharSizePrefix.Default)
+                throw new InvalidOperationException("DefaultCharSizePrefix can't set to Default!");
+            _charSizePrefix = value;
+        }
+    }
+
     /// <summary>Initialize BinaryView with a empty MemoryStream</summary>
     public BinaryViewReader()
     {
@@ -77,24 +101,42 @@ public class BinaryViewReader : IDisposable
     }
 
 
-    /// <summary>Reads a array of unmanaged structs from the stream and increases the position by the size of the array elements, and 4 bytes for the length</summary>
+    /// <summary>Reads a array of unmanaged structs from the stream and increases the position by the size of the array elements, get amount of elements from prefix</summary>
     /// <typeparam name="T"></typeparam> Type of unmanaged struct
-    public unsafe T[] ReadArray<T>() where T : unmanaged
+    public unsafe T[] ReadArray<T>(LengthPrefix lengthPrefix = LengthPrefix.Default) where T : unmanaged
     {
-        int length = ReadInt32();
+        long length = readLengthPrefix(lengthPrefix);
         T[] array = new T[length];
         for (int i = 0; i < array.Length; i++) array[i] = Read<T>();
         return array;
     }
 
-    /// <summary>Reads a array of unmanaged structs from the stream and increases the position by the size of the array elements, and 4 bytes for the length</summary>
+    /// <summary>Reads a array of unmanaged structs from the stream and increases the position by the size of the array elements, get amount of elements from prefix</summary>
     /// <typeparam name="T"></typeparam> Type of unmanaged struct
-    /// <param name="array">Pointer to existing array to write in</param>
+    /// <param name="list">Pointer to existing list to write in</param>
     /// <param name="offset">Offset in array</param>
-    public unsafe void ReadArray<T>(T[] array, int offset = 0) where T : unmanaged
+    public unsafe void ReadToIList<T>(IList<T> list, int offset = 0, LengthPrefix lengthPrefix = LengthPrefix.Default) where T : unmanaged
     {
-        int length = ReadInt32();
-        for (int i = 0; i < length; i++) array[i + offset] = Read<T>();
+        long length = readLengthPrefix(lengthPrefix);
+        ReadToIList(list, offset, length);
+    }
+
+    /// <summary>Reads a list of unmanaged structs from the stream and increases the position by the size of the array elements, read no length prefix</summary>
+    /// <typeparam name="T"></typeparam> Type of unmanaged struct
+    /// <param name="dstList">Pointer to existing list to write in</param>
+    /// <param name="offset">Offset in dstList</param>
+    /// <param name="count">Amount of elements to read</param>
+    public unsafe void ReadToIList<T>(IList<T> dstList, int offset, long count) where T : unmanaged
+    {
+        for (int i = 0; i < count; i++)
+        {
+            int idx = offset + i;
+            var item = Read<T>();
+            if (idx >= dstList.Count)
+                dstList.Add(item);
+            else
+                dstList[idx] = item;
+        }
     }
 
     /// <summary>Reads a char from the stream and increases the position by two bytes</summary>
@@ -173,19 +215,14 @@ public class BinaryViewReader : IDisposable
     }
 
     /// <summary>Reads a string from the stream</summary>
-    public string ReadString()
+    public string ReadString(LengthPrefix lengthPrefix = LengthPrefix.Default, CharSizePrefix charSizePrefix = CharSizePrefix.Default)
     {
-        byte meta = ReadByte();
-
-        int lengthSizeBit = (meta >> 0) & 1;
-        int charSizeBit = (meta >> 1) & 1;
-
-        int length;
-        if (lengthSizeBit == 1) length = ReadInt32();
-        else length = ReadByte();
+        long length = readLengthPrefix(lengthPrefix);
+        if (charSizePrefix == CharSizePrefix.Default)
+            charSizePrefix = DefaultCharSizePrefix;
 
         char[] retData = new char[length];
-        if (charSizeBit == 1)
+        if (charSizePrefix == CharSizePrefix.Char)
             for (int i = 0; i < retData.Length; i++)
                 retData[i] = (char)ReadChar();
         else
@@ -197,10 +234,37 @@ public class BinaryViewReader : IDisposable
     /// <summary>Reads a array of string from the stream</summary>
     public string[] ReadStringArray()
     {
-        int length = ReadInt32();
+        long length = readLengthPrefix(LengthPrefix.UInt32);
         string[] retData = new string[length];
-        for (int i = 0; i < retData.Length; i++) retData[i] = ReadString();
+        for (int i = 0; i < retData.Length; i++) retData[i] = ReadString(LengthPrefix.UInt32, CharSizePrefix.Char);
         return retData;
+    }
+
+    internal long readLengthPrefix(LengthPrefix lengthPrefix)
+    {
+        switch (lengthPrefix)
+        {
+            case LengthPrefix.Default:
+                return readLengthPrefix(DefaultLengthPrefix);
+            case LengthPrefix.SByte:
+                return ReadSByte();
+            case LengthPrefix.Byte:
+                return ReadByte();
+            case LengthPrefix.Int16:
+                return ReadInt16();
+            case LengthPrefix.UInt16:
+                return ReadUInt16();
+            case LengthPrefix.Int32:
+                return ReadInt32();
+            case LengthPrefix.UInt32:
+                return ReadUInt32();
+            case LengthPrefix.Int64:
+                return ReadInt64();
+            case LengthPrefix.UInt64:
+                return (long)ReadUInt64();
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
     }
     #endregion
 
@@ -216,6 +280,7 @@ public class BinaryViewReader : IDisposable
         }
         decompressedStream.Seek(0, SeekOrigin.Begin);
 
+        // replace compressed baseStream with decompressedStream 
         baseStream.Dispose();
         baseStream = decompressedStream;
         readStream = baseStream;

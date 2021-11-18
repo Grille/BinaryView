@@ -12,3 +12,24 @@ public enum CompressionLevel
     Optimal = SysIOC.CompressionLevel.Optimal,
 }
 
+public enum LengthPrefix 
+{
+    Default,
+    None,
+    SByte,
+    Byte,
+    Int16,
+    UInt16,
+    Int32,
+    UInt32,
+    Int64,
+    UInt64,
+}
+
+public enum CharSizePrefix
+{
+    Default,
+    Byte,
+    Char,
+}
+

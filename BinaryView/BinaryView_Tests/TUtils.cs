@@ -97,22 +97,22 @@ internal static class TUtils
         Write($"* Success: {successCount}\n");
         Write($"* failure: {failureCount + errorCount}\n");
     }
-    public static bool IsArrayEqual<T>(T[] array1, T[] array2)
+    public static bool IsIListEqual<T>(IList<T> array1, IList<T> array2)
     {
-        if (array1.Length != array2.Length)
+        if (array1.Count != array2.Count)
             return false;
-        for (int i = 0; i < array2.Length; i++)
+        for (int i = 0; i < array2.Count; i++)
             if ("" + array2[i] != "" + array1[i])
                 return false;
         return true;
     }
-    public static string ArrayToString<T>(T[] array)
+    public static string IListToString<T>(IList<T> array)
     {
         string result = "";
-        for (int i = 0; i < array.Length; i++)
+        for (int i = 0; i < array.Count; i++)
         {
             result += "" + array[i];
-            if (i < array.Length - 1) result += ",";
+            if (i < array.Count - 1) result += ",";
         }
         return result;
     }
