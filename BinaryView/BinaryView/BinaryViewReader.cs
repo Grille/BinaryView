@@ -139,6 +139,13 @@ public class BinaryViewReader : IDisposable
         }
     }
 
+    /// <summary>Reads a bool from the stream and increases the position by one byte</summary>
+    public bool ReadBoolean()
+    {
+        readStream.Read(readBuffer, 0, sizeof(bool));
+        return BitConverter.ToBoolean(readBuffer, 0);
+    }
+
     /// <summary>Reads a char from the stream and increases the position by two bytes</summary>
     public char ReadChar()
     {

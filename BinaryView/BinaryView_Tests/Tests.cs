@@ -4,6 +4,7 @@ using System.IO;
 using System.Runtime.Serialization;
 using System.Collections.Generic;
 using GGL.IO;
+using System.Diagnostics;
 
 namespace BinaryView_Tests;
 
@@ -23,6 +24,7 @@ static class Tests
         TUtils.WriteTitle("Run tests...\n");
 
         TUtils.WriteTitle("test types");
+        testTyp(bw.WriteBoolean, br.ReadBoolean, false, true);
         testTyp(bw.WriteChar, br.ReadChar, char.MinValue, char.MaxValue);
         testTyp(bw.WriteByte, br.ReadByte, byte.MinValue, byte.MaxValue);
         testTyp(bw.WriteSByte, br.ReadSByte, sbyte.MinValue, sbyte.MaxValue);
@@ -43,6 +45,7 @@ static class Tests
         testString("Ä'*Ü-.,><%§ÃoÜ╝ô○╝+");
 
         TUtils.WriteTitle("test unmanaged types");
+        testGTyp(false, true);
         testGTyp(char.MinValue, char.MaxValue);
         testGTyp(byte.MinValue, byte.MaxValue);
         testGTyp(sbyte.MinValue, sbyte.MaxValue);
@@ -87,6 +90,9 @@ static class Tests
 
         TUtils.WriteTitle("test map compressed");
         testMap(64, true);
+
+        TUtils.WriteTitle("test speed");
+        testSpeed();
 
         TUtils.WriteResults();
     }
@@ -480,6 +486,122 @@ static class Tests
             });
             size *= 2;
         }
+    }
+
+    private static void testSpeed()
+    {
+        var rnd = new Random();
+        var watch = new Stopwatch();
+
+        TUtils.Test("WriteByte x100000 time", () =>
+        {
+            stream.Seek(0, SeekOrigin.Begin);
+            watch.Restart();
+            for (int i = 0; i < 100000; i++)
+            {
+                bw.WriteByte((byte)rnd.NextDouble());
+            }
+            watch.Stop();
+
+            TUtils.WriteSucces($"OK {watch.Elapsed.TotalMilliseconds}ms");
+            return TestResult.Success;
+        });
+        TUtils.Test("ReadByte x100000 time", () =>
+        {
+            stream.Seek(0, SeekOrigin.Begin);
+            watch.Restart();
+            for (int i = 0; i < 100000; i++)
+            {
+                br.ReadByte();
+            }
+            watch.Stop();
+
+            TUtils.WriteSucces($"OK {watch.Elapsed.TotalMilliseconds}ms");
+            return TestResult.Success;
+        });
+
+        TUtils.Test("Write<byte> x100000 time", () =>
+        {
+            stream.Seek(0, SeekOrigin.Begin);
+            watch.Restart();
+            for (int i = 0; i < 100000; i++)
+            {
+                bw.Write<byte>((byte)rnd.NextDouble());
+            }
+            watch.Stop();
+
+            TUtils.WriteSucces($"OK {watch.Elapsed.TotalMilliseconds}ms");
+            return TestResult.Success;
+        });
+
+        TUtils.Test("Read<byte> x100000 time", () =>
+        {
+            stream.Seek(0, SeekOrigin.Begin);
+            watch.Restart();
+            for (int i = 0; i < 100000; i++)
+            {
+                br.Read<byte>();
+            }
+            watch.Stop();
+
+            TUtils.WriteSucces($"OK {watch.Elapsed.TotalMilliseconds}ms");
+            return TestResult.Success;
+        });
+
+        TUtils.Test("WriteDouble x100000 time", () =>
+        {
+            stream.Seek(0, SeekOrigin.Begin);
+            watch.Restart();
+            for (int i = 0; i < 100000; i++)
+            {
+                bw.WriteDouble(rnd.NextDouble());
+            }
+            watch.Stop();
+
+            TUtils.WriteSucces($"OK {watch.Elapsed.TotalMilliseconds}ms");
+            return TestResult.Success;
+        });
+        TUtils.Test("ReadDouble x100000 time", () =>
+        {
+            stream.Seek(0, SeekOrigin.Begin);
+            watch.Restart();
+            for (int i = 0; i < 100000; i++)
+            {
+                br.ReadDouble();
+            }
+            watch.Stop();
+
+            TUtils.WriteSucces($"OK {watch.Elapsed.TotalMilliseconds}ms");
+            return TestResult.Success;
+        });
+
+        TUtils.Test("Write<double> x100000 time", () =>
+        {
+            stream.Seek(0, SeekOrigin.Begin);
+            watch.Restart();
+            for (int i = 0; i < 100000; i++)
+            {
+                bw.Write<double>(rnd.NextDouble());
+            }
+            watch.Stop();
+
+            TUtils.WriteSucces($"OK {watch.Elapsed.TotalMilliseconds}ms");
+            return TestResult.Success;
+        });
+
+        TUtils.Test("Read<double> x100000 time", () =>
+        {
+            stream.Seek(0, SeekOrigin.Begin);
+            watch.Restart();
+            for (int i = 0; i < 100000; i++)
+            {
+                br.Read<double>();
+            }
+            watch.Stop();
+
+            TUtils.WriteSucces($"OK {watch.Elapsed.TotalMilliseconds}ms");
+            return TestResult.Success;
+        });
     }
 
 

@@ -121,6 +121,9 @@ public class BinaryViewWriter : IDisposable
         for (int i = 0; i < count; i++) Write(list[i + offset]);
     }
 
+    /// <summary>Writes a bool to the stream and increases the position by one byte</summary>
+    public void WriteBoolean(bool input) => writeStream.Write(BitConverter.GetBytes(input), 0, sizeof(bool));
+
     /// <summary>Writes a char to the stream and increases the position by two bytes</summary>
     public void WriteChar(char input) => writeStream.Write(BitConverter.GetBytes(input), 0, sizeof(char));
 
