@@ -13,8 +13,8 @@ Available as a [NuGet Package](https://www.nuget.org/packages/GGL.BinaryView/).
 
 ## Warning
 This library has basically no error checking...<br>
-If you mess up the write/read order, or try to read a corrupted/wrong files things will break!<br>
-Then read functions will give your wrong values or ReadArray hangs, because it try's to read an insanely huge array!<br>
+If you mess up the write/read order, or try to read a corrupted/wrong file things will break!<br>
+Then read functions will give your wrong values, or ReadArray hangs because it try's to read an insanely huge array!<br>
 
 ## Documentation
 This project has no proper documentation yet, but most functions have descriptions, and should be pretty self-explanatory<br>
