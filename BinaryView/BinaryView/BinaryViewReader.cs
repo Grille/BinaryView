@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
+using System;
 
 namespace GGL.IO;
 
@@ -15,7 +16,9 @@ public class BinaryViewReader : IDisposable
     private Stream baseStream;
     private Stream readStream;
 
-    private bool ownStream = true;
+    private Stack<(Stream, object)> streamStack = new();
+
+    private bool closeStream = true;
     private BinaryFormatter formatter = new BinaryFormatter();
 
     public long Position
@@ -57,28 +60,28 @@ public class BinaryViewReader : IDisposable
     public BinaryViewReader()
     {
         baseStream = new MemoryStream();
-        readStream = baseStream;
+        PushStream(baseStream);
     }
     /// <summary>Initialize BinaryView with a FileStream</summary>
     /// <param name="path">File path</param>
     public BinaryViewReader(string path)
     {
         baseStream = new FileStream(path, FileMode.Open, FileAccess.Read);
-        readStream = baseStream;
+        PushStream(baseStream);
     }
     /// <summary>Initialize BinaryView with a MemoryStream filled with bytes from array</summary>
     /// <param name="bytes">Base array</param>
     public BinaryViewReader(byte[] bytes)
     {
         baseStream = new MemoryStream(bytes);
-        readStream = baseStream;
+        PushStream(baseStream);
     }
     /// <summary>Initialize BinaryView with a Stream</summary>
-    public BinaryViewReader(Stream stream)
+    public BinaryViewReader(Stream stream, bool closeStream = false)
     {
         baseStream = stream;
-        readStream = baseStream;
-        ownStream = false;
+        PushStream(baseStream);
+        this.closeStream = closeStream;
     }
 
     #region read
@@ -137,6 +140,16 @@ public class BinaryViewReader : IDisposable
             else
                 dstList[idx] = item;
         }
+    }
+
+    /// <summary>Reads a list of unmanaged structs from the stream and increases the position by the size of the array elements, read no length prefix</summary>
+    /// <typeparam name="T"></typeparam> Type of unmanaged struct
+    /// <param name="dstList">Pointer to existing list to write in</param>
+    /// <param name="offset">Offset in dstList</param>
+    public unsafe void ReadRemainderToIList<T>(IList<T> dstList, int offset) where T : unmanaged
+    {
+        long count = (readStream.Length - readStream.Position) / sizeof(T);
+        ReadToIList(dstList, offset, count);
     }
 
     /// <summary>Reads a bool from the stream and increases the position by one byte</summary>
@@ -295,25 +308,47 @@ public class BinaryViewReader : IDisposable
     /// <summary>Decompress data with DeflateStream, position will reset</summary>
     public void BeginDeflateSection()
     {
-        long length = ReadInt64();
         var DecompressedStream = new MemoryStream();
 
-        using (var compressedSection = new SubStream(readStream, readStream.Position, length))
+        long length = ReadInt64();
+        using (var compressedSection = ReadStream(length))
         {
             using (var decompressStream = new DeflateStream(compressedSection, CompressionMode.Decompress, true))
             {
                 decompressStream.CopyTo(DecompressedStream);
             }
         }
-        readStream = DecompressedStream;
-        readStream.Seek(0, SeekOrigin.Begin);
+        DecompressedStream.Seek(0, SeekOrigin.Begin);
+        PushStream(DecompressedStream);
     }
 
     public void EndDeflateSection()
     {
-        // Dispose DecompressedStream
-        readStream.Dispose();
-        readStream = baseStream;
+        CloseStream();
+    }
+
+    public void PushStream(Stream stream, object args = null)
+    {
+        streamStack.Push((stream, args));
+        readStream = stream;
+    }
+
+    public (Stream stream, object args) PeekStream()
+    {
+        return streamStack.Peek();
+    }
+
+    public void CloseStream()
+    {
+        (var stream, _) = streamStack.Pop();
+        stream.Dispose();
+        (readStream, _) = PeekStream();
+    }
+
+    public Stream ReadStream(long length)
+    {
+        var stream = new SubStream(readStream, readStream.Position, length);
+        return stream;
     }
 
     #region IDisposable Support

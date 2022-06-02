@@ -11,8 +11,6 @@ internal class SubStream : Stream
     long offset, length, position = 0;
     public SubStream(Stream baseStream, long offset, long length)
     {
-        if (length < 1) throw new ArgumentException("Length must be greater than zero.");
-
         this.baseStream = baseStream;
         this.offset = offset;
         this.length = length;

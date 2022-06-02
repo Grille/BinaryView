@@ -13,9 +13,10 @@ public class BinaryViewWriter : IDisposable
 {
     private Stream baseStream;
     private Stream writeStream;
-    private Stream deflateInputStream;
 
-    private bool ownStream = true;
+    private Stack<(Stream, object)> streamStack = new();
+
+    private bool closeStream = true;
     private bool deflateAllMode = false;
 
     private LengthPrefix _lengthPrefix = LengthPrefix.UInt32;
@@ -59,22 +60,22 @@ public class BinaryViewWriter : IDisposable
     public BinaryViewWriter()
     {
         baseStream = new MemoryStream();
-        writeStream = baseStream;
+        PushStream(baseStream);
     }
     /// <summary>Initialize BinaryView with a FileStream</summary>
     /// <param name="path">File path</param>
     public BinaryViewWriter(string path)
     {
         baseStream = new FileStream(path, FileMode.Create, FileAccess.Write);
-        writeStream = baseStream;
+        PushStream(baseStream);
     }
 
     /// <summary>Initialize BinaryView with a Stream</summary>
-    public BinaryViewWriter(Stream stream)
+    public BinaryViewWriter(Stream stream, bool closeStream = false)
     {
         baseStream = stream;
-        writeStream = baseStream;
-        ownStream = false;
+        PushStream(baseStream);
+        this.closeStream = closeStream;
     }
 
 
@@ -267,25 +268,49 @@ public class BinaryViewWriter : IDisposable
     public void BeginDeflateSection(CompressionLevel level = CompressionLevel.Optimal)
     {
         deflateLevel = level;
-        deflateInputStream = new MemoryStream();
-        writeStream = deflateInputStream;
+        PushStream(new MemoryStream(),level);
     }
 
     public void EndDeflateSection()
     {
         using (var compressedStream = new MemoryStream())
         {
-            using (var compressor = new DeflateStream(compressedStream, (SysIOC.CompressionLevel)deflateLevel, true))
+            (var stream, var args) = PeekStream();
+            using (var compressor = new DeflateStream(compressedStream, (SysIOC.CompressionLevel)args, true))
             {
-                writeStream.Seek(0, SeekOrigin.Begin);
-                writeStream.CopyTo(compressor);
+                stream.Seek(0, SeekOrigin.Begin);
+                stream.CopyTo(compressor);
             }
-            writeStream.Dispose();
-            writeStream = baseStream;
+            CloseStream();
             WriteInt64(compressedStream.Length);
-            compressedStream.Seek(0, SeekOrigin.Begin);
-            compressedStream.CopyTo(baseStream);
+            WriteStream(compressedStream);
         }
+    }
+
+    public void PushStream(Stream stream, object args = null)
+    {
+        streamStack.Push((stream,args));
+        writeStream = stream;
+    }
+
+    public (Stream stream, object args) PeekStream()
+    {
+        return streamStack.Peek();
+    }
+
+    public void CloseStream()
+    {
+        (var stream, _) = streamStack.Pop();
+        stream.Dispose();
+        (writeStream, _) = PeekStream();
+    }
+
+    public void WriteStream(Stream stream)
+    {
+        var pos = stream.Position;
+        stream.Seek(0, SeekOrigin.Begin);
+        stream.CopyTo(writeStream);
+        stream.Position = pos;
     }
 
     #region IDisposable Support
@@ -299,7 +324,7 @@ public class BinaryViewWriter : IDisposable
             {
                 Close();
             }
-            if (ownStream)
+            if (closeStream)
                 baseStream.Dispose();
 
             disposedValue = true;
