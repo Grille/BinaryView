@@ -33,3 +33,9 @@ public enum CharSizePrefix
     Char,
 }
 
+public enum Endianness
+{
+    LittleEndian,
+    BigEndian,
+    Default = LittleEndian,
+}

@@ -9,6 +9,7 @@ Available as a [NuGet Package](https://www.nuget.org/packages/GGL.BinaryView/).
 * Easy compresion/decompresion of section or whole stram with Deflate
 * Support ISerializable, Warning size is usually pretty bloated in comparision to generic and native functions!
 * Customizable list-length prefixes and string char size
+* Separate support for byte and bit endianness
 <br>
 
 ## Warning

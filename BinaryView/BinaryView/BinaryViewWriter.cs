@@ -11,39 +11,76 @@ namespace GGL.IO;
 
 public class BinaryViewWriter : IDisposable
 {
-    private Stream baseStream;
+    record struct DflateSectionInfo(CompressionLevel Level, LengthPrefix LengthPrefix);
+
+    private byte[] writeBuffer = new byte[Utils.DefaultBufferSize];
     private Stream writeStream;
 
-    private Stack<(Stream, object)> streamStack = new();
-
-    private bool closeStream = true;
     private bool deflateAllMode = false;
 
+    private int _bufferSize = Utils.DefaultBufferSize;
     private LengthPrefix _lengthPrefix = LengthPrefix.UInt32;
+    private CharSizePrefix _charSizePrefix = CharSizePrefix.Char;
+    private Endianness _bitOrder = Endianness.Default;
+    private Endianness _byteOrder = Endianness.Default;
+    private bool needBitReorder = false;
+    private bool needByteReorder = false;
+    private bool needReorder = false;
+
+    private BinaryFormatter formatter = new BinaryFormatter();
+
+
+    public readonly StreamStack StreamStack;
+    public Endianness BitOrder
+    {
+        get => _bitOrder;
+        set
+        {
+            _bitOrder = value;
+            needBitReorder = _bitOrder != Endianness.Default;
+            needReorder = _bitOrder != Endianness.Default || _byteOrder != Endianness.Default;
+        }
+    }
+    public Endianness ByteOrder
+    {
+        get => _bitOrder;
+        set
+        {
+            _byteOrder = value;
+            needByteReorder = _byteOrder != Endianness.Default;
+            needReorder = _bitOrder != Endianness.Default || _byteOrder != Endianness.Default;
+        }
+    }
+
+    public int BufferSize
+    {
+        get => _bufferSize;
+        set
+        {
+            _bufferSize = value;
+            writeBuffer = new byte[_bufferSize];
+        }
+    }
+
     public LengthPrefix DefaultLengthPrefix { 
         get => _lengthPrefix; 
         set {
             if (value == LengthPrefix.Default)
-                throw new InvalidOperationException("DefaultLengthPrefix can't set to Default!");
+                throw new ArgumentException("DefaultLengthPrefix can't be set to Default!");
             _lengthPrefix = value;
         }
     }
 
-    private CharSizePrefix _charSizePrefix = CharSizePrefix.Char;
     public CharSizePrefix DefaultCharSizePrefix
     {
         get => _charSizePrefix;
         set
         {
             if (value == CharSizePrefix.Default)
-                throw new InvalidOperationException("DefaultCharSizePrefix can't set to Default!");
+                throw new ArgumentException("DefaultCharSizePrefix can't be set to Default!");
             _charSizePrefix = value;
         }
     }
-
-    private CompressionLevel deflateLevel;
-
-    private BinaryFormatter formatter = new BinaryFormatter();
 
     public long Position
     {
@@ -56,28 +93,31 @@ public class BinaryViewWriter : IDisposable
         set => writeStream.SetLength(value);
     }
 
+
     /// <summary>Initialize BinaryView with a empty MemoryStream</summary>
-    public BinaryViewWriter()
-    {
-        baseStream = new MemoryStream();
-        PushStream(baseStream);
-    }
+    public BinaryViewWriter() :
+        this(new StreamStack(new MemoryStream(), true))
+    { }
     /// <summary>Initialize BinaryView with a FileStream</summary>
     /// <param name="path">File path</param>
-    public BinaryViewWriter(string path)
-    {
-        baseStream = new FileStream(path, FileMode.Create, FileAccess.Write);
-        PushStream(baseStream);
-    }
+    public BinaryViewWriter(string path) :
+        this(new StreamStack(new FileStream(path, FileMode.Create, FileAccess.Write), true))
+    { }
 
     /// <summary>Initialize BinaryView with a Stream</summary>
-    public BinaryViewWriter(Stream stream, bool closeStream = false)
-    {
-        baseStream = stream;
-        PushStream(baseStream);
-        this.closeStream = closeStream;
-    }
+    public BinaryViewWriter(Stream stream, bool closeStream = false) :
+        this(new StreamStack(stream, closeStream))
+    { }
 
+    public BinaryViewWriter(StreamStack stack)
+    {
+        StreamStack = stack;
+        StreamStack.StackChanged += (object sender, StreamStackEntry e) =>
+        {
+            writeStream = e.Stream;
+        };
+        writeStream = StreamStack.Peek().Stream;
+    }
 
     #region write
 
@@ -86,10 +126,31 @@ public class BinaryViewWriter : IDisposable
     /// <param name="obj">Struct to write</param>
     public unsafe void Write<T>(T obj) where T : unmanaged
     {
+
         int size = sizeof(T);
-        var ptr = new IntPtr(&obj);
-        if (size == 1) WriteByte(Marshal.ReadByte(ptr, 0));
-        else for (int i = 0; i < size; i++) WriteByte(Marshal.ReadByte(ptr, i));
+        var ptr = (byte*)&obj;
+        switch (size)
+        {
+            case 1:
+            {
+                if (needBitReorder)
+                    *ptr = Utils.BitReverseTable[*ptr];
+
+                writeStream.WriteByte(*ptr);
+                return;
+            }
+            default:
+            {
+                if (needReorder)
+                    Utils.ReverseObjBits(&obj, needByteReorder, needBitReorder);
+
+                for (int i = 0; i < size; i++)
+                    writeBuffer[i] = *(ptr + i);
+
+                writeStream.Write(writeBuffer, 0, size);
+                return;
+            }
+        }
     }
 
     /// <summary>Writes any object to the stream and increases the position by the size of the struct</summary>
@@ -123,43 +184,43 @@ public class BinaryViewWriter : IDisposable
     }
 
     /// <summary>Writes a bool to the stream and increases the position by one byte</summary>
-    public void WriteBoolean(bool input) => writeStream.Write(BitConverter.GetBytes(input), 0, sizeof(bool));
+    public unsafe void WriteBoolean(bool input) => Write(input);
 
     /// <summary>Writes a char to the stream and increases the position by two bytes</summary>
-    public void WriteChar(char input) => writeStream.Write(BitConverter.GetBytes(input), 0, sizeof(char));
+    public unsafe void WriteChar(char input) => Write(input);
 
     /// <summary>Writes a byte to the stream and increases the position by one byte</summary>
-    public void WriteByte(byte input) => writeStream.WriteByte(input);
+    public unsafe void WriteByte(byte input) => Write(input);
 
     /// <summary>Writes a sbyte to the stream and increases the position by one byte</summary>
-    public void WriteSByte(sbyte input) => writeStream.WriteByte((byte)input);
+    public unsafe void WriteSByte(sbyte input) => Write(input);
 
     /// <summary>Writes a ushort to the stream and increases the position by two bytes</summary>
-    public void WriteUInt16(ushort input) => writeStream.Write(BitConverter.GetBytes(input), 0, sizeof(ushort));
+    public unsafe void WriteUInt16(ushort input) => Write(input);
 
     /// <summary>Writes a short to the stream and increases the position by two bytes</summary>
-    public void WriteInt16(short input) => writeStream.Write(BitConverter.GetBytes(input), 0, sizeof(short));
+    public unsafe void WriteInt16(short input) => Write(input);
 
     /// <summary>Writes a uint to the stream and increases the position by four bytes</summary>
-    public void WriteUInt32(uint input) => writeStream.Write(BitConverter.GetBytes(input), 0, sizeof(uint));
+    public unsafe void WriteUInt32(uint input) => Write(input);
 
     /// <summary>Writes a int to the stream and increases the position by four bytes</summary>
-    public void WriteInt32(int input) => writeStream.Write(BitConverter.GetBytes(input), 0, sizeof(int));
+    public unsafe void WriteInt32(int input) => Write(input);
 
     /// <summary>Writes a ulong to the stream and increases the position by eight bytes</summary>
-    public void WriteUInt64(ulong input) => writeStream.Write(BitConverter.GetBytes(input), 0, sizeof(ulong));
+    public unsafe void WriteUInt64(ulong input) => Write(input);
 
     /// <summary>Writes a long to the stream and increases the position by eight bytes</summary>
-    public void WriteInt64(long input) => writeStream.Write(BitConverter.GetBytes(input), 0, sizeof(long));
+    public unsafe void WriteInt64(long input) => Write(input);
 
     /// <summary>Writes a float to the stream and increases the position by four bytes</summary>
-    public void WriteSingle(float input) => writeStream.Write(BitConverter.GetBytes(input), 0, sizeof(float));
+    public unsafe void WriteSingle(float input) => Write(input);
 
     /// <summary>Writes a double to the stream and increases the position by eight byte</summary>
-    public void WriteDouble(double input) => writeStream.Write(BitConverter.GetBytes(input), 0, sizeof(double));
+    public unsafe void WriteDouble(double input) => Write(input);
 
     /// <summary>Writes a decimal to the stream and increases the position by sixteen bytes</summary>
-    public void WriteDecimal(decimal input) => Write(input);
+    public unsafe void WriteDecimal(decimal input) => Write(input);
 
     /// <summary>Writes a string as char array to the stream</summary>
     public void WriteString(string input, LengthPrefix lengthPrefix = LengthPrefix.Default, CharSizePrefix charSizePrefix = CharSizePrefix.Default)
@@ -225,92 +286,51 @@ public class BinaryViewWriter : IDisposable
 
     public void Close()
     {
-        if (deflateAllMode)
-        {
-            using (var compressedStream = new MemoryStream())
-            {
-                using (var compressor = new DeflateStream(compressedStream, (SysIOC.CompressionLevel)deflateLevel, true))
-                {
-                    writeStream.Seek(0, SeekOrigin.Begin);
-                    writeStream.CopyTo(compressor);
-                }
-                compressedStream.Seek(0, SeekOrigin.Begin);
-                compressedStream.CopyTo(baseStream);
-            }
-            writeStream.Dispose();
-            writeStream = baseStream;
-        }
-
-        baseStream.Close();
+        while (StreamStack.Count > 0)
+            StreamStack.Pop();
     }
 
     /// <summary>Save data as binary file to the specified path</summary>
     public void Save(string path)
     {
         var fs = File.Open(path, FileMode.Create, FileAccess.Write);
-        baseStream.CopyTo(fs);
+        writeStream.CopyTo(fs);
         fs.Dispose();
     }
 
     public byte[] ToArray()
     {
-        return ((MemoryStream)baseStream).ToArray();
+        return ((MemoryStream)writeStream).ToArray();
     }
 
     /// <summary>Compress all data with DeflateStream</summary>
     public void CompressAll(CompressionLevel level = CompressionLevel.Optimal)
     {
-        writeStream = new MemoryStream();
-        deflateLevel = level;
         deflateAllMode = true;
+        BeginDeflateSection(level, LengthPrefix.None);
     }
 
-    public void BeginDeflateSection(CompressionLevel level = CompressionLevel.Optimal)
+    public void BeginDeflateSection(CompressionLevel level = CompressionLevel.Optimal, LengthPrefix lengthPrefix = LengthPrefix.Default)
     {
-        deflateLevel = level;
-        PushStream(new MemoryStream(),level);
+        StreamStack.Create(new DflateSectionInfo(level, lengthPrefix));
     }
 
     public void EndDeflateSection()
     {
         using (var compressedStream = new MemoryStream())
         {
-            (var stream, var args) = PeekStream();
-            using (var compressor = new DeflateStream(compressedStream, (SysIOC.CompressionLevel)args, true))
+            var peakStream = StreamStack.Pop();
+            var args = (DflateSectionInfo)peakStream.Args;
+            using (var compressor = new DeflateStream(compressedStream, (SysIOC.CompressionLevel)args.Level, true))
             {
-                stream.Seek(0, SeekOrigin.Begin);
-                stream.CopyTo(compressor);
+                peakStream.Stream.Seek(0, SeekOrigin.Begin);
+                peakStream.Stream.CopyTo(compressor);
             }
-            CloseStream();
-            WriteInt64(compressedStream.Length);
-            WriteStream(compressedStream);
+            peakStream.Dispose();
+            compressedStream.Seek(0, SeekOrigin.Begin);
+            writeLengthPrefix(args.LengthPrefix, compressedStream.Length);
+            StreamStack.CopyToPeak(compressedStream, false);
         }
-    }
-
-    public void PushStream(Stream stream, object args = null)
-    {
-        streamStack.Push((stream,args));
-        writeStream = stream;
-    }
-
-    public (Stream stream, object args) PeekStream()
-    {
-        return streamStack.Peek();
-    }
-
-    public void CloseStream()
-    {
-        (var stream, _) = streamStack.Pop();
-        stream.Dispose();
-        (writeStream, _) = PeekStream();
-    }
-
-    public void WriteStream(Stream stream)
-    {
-        var pos = stream.Position;
-        stream.Seek(0, SeekOrigin.Begin);
-        stream.CopyTo(writeStream);
-        stream.Position = pos;
     }
 
     #region IDisposable Support
@@ -320,12 +340,10 @@ public class BinaryViewWriter : IDisposable
     {
         if (!disposedValue)
         {
-            if (disposing)
-            {
-                Close();
-            }
-            if (closeStream)
-                baseStream.Dispose();
+            if (deflateAllMode)
+                EndDeflateSection();
+
+            StreamStack.Dispose();
 
             disposedValue = true;
         }

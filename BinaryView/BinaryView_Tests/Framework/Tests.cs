@@ -10,7 +10,7 @@ namespace BinaryView_Tests;
 
 static class Tests
 {
-    public static void testTyp<T>(string typeName, T value1, T value2)
+    public static void WriteReadPrimitive<T>(string typeName, T value1, T value2)
     {
         testTyp(typeName, value1);
         testTyp(typeName, value2);
@@ -28,7 +28,7 @@ static class Tests
         var read = (Func<T>)readInfo.CreateDelegate(typeof(Func<T>), br);
 
         string typ = typeof(T).Name;
-        TUtils.Test("read/write " + typ + " (" + input + ")", () =>
+        TUtils.RunTest("read/write " + typ + " (" + input + ")", () =>
         {
             bw.Position = 0;
             write(input);
@@ -50,13 +50,13 @@ static class Tests
         data.Destroy();
     }
 
-    public static void testString(string str, LengthPrefix lengthPrefix = LengthPrefix.Default, CharSizePrefix charSizePrefix = CharSizePrefix.Default)
+    public static void WriteReadString(string str, LengthPrefix lengthPrefix = LengthPrefix.Default, CharSizePrefix charSizePrefix = CharSizePrefix.Default)
     {
         var data = new TestData();
         var bw = data.Writer;
         var br = data.Reader;
 
-        TUtils.Test($"read/write string[{charSizePrefix}].length:{lengthPrefix} ({str})", () =>
+        TUtils.RunTest($"read/write string[{charSizePrefix}].length:{lengthPrefix} ({str})", () =>
         {
             bw.Position = 0;
             bw.WriteString(str, lengthPrefix, charSizePrefix);
@@ -78,53 +78,115 @@ static class Tests
         data.Destroy();
     }
 
-    public static void testGTyp<T>(T input) where T : unmanaged
+    public static void Endianness<T>(string endianness, T input, T mask) where T : unmanaged
     {
         var data = new TestData();
         var bw = data.Writer;
         var br = data.Reader;
 
+        Endianness byteOrder = endianness[0] == 'L' ? GGL.IO.Endianness.LittleEndian : GGL.IO.Endianness.BigEndian;
+        Endianness bitOrder = endianness[1] == 'L' ? GGL.IO.Endianness.LittleEndian : GGL.IO.Endianness.BigEndian;
+
+        bw.ByteOrder = br.ByteOrder = byteOrder;
+        bw.BitOrder = br.BitOrder = bitOrder;
+
         string typ = typeof(T).Name;
-        TUtils.Test("read/write " + typ + " (" + input + ")", () =>
+        TUtils.RunTest($"endianness {typ} ({input}) {endianness}", () =>
         {
-            bw.Position = 0;
             bw.Write(input);
-            var size = bw.Position;
-            bw.Position = 0;
-            T result = br.Read<T>();
-            if (result.Equals(input))
+            int wSize = data.PopPtr();
+
+            if (!TUtils.MatchBitsInStream(mask, data.Stream, out string cmpmask))
             {
-                TUtils.WriteSucces($"OK {size}b");
-                return TestResult.Success;
-            }
-            else
-            {
-                TUtils.WriteFail($"{result}");
+                TUtils.WriteFail($"FAIL w-bits:'{cmpmask}'");
                 return TestResult.Failure;
             }
+            data.ResetPtr();
+
+            T result = br.Read<T>();
+            int rSize = data.PopPtr();
+
+            if (wSize != rSize)
+            {
+                TUtils.WriteFail($"FAIL w:{wSize} != r:{rSize}");
+                return TestResult.Failure;
+            }
+            data.ResetPtr();
+            if (!result.Equals(input))
+            {
+                TUtils.WriteFail($"FAIL r-v:'{result}'");
+                return TestResult.Failure;
+            }
+
+            TUtils.WriteSucces($"OK {wSize}b {cmpmask}");
+            return TestResult.Success;
         });
 
         data.Destroy();
     }
-    public static void testGTyp<T>(T value1, T value2) where T : unmanaged
-    {
-        testGTyp(value1);
-        testGTyp(value2);
-    }
 
-    public static void testSTyp<T>(T input)
+    public static void WriteReadGeneric<T>(T input) where T : unmanaged
     {
         var data = new TestData();
         var bw = data.Writer;
         var br = data.Reader;
 
         string typ = typeof(T).Name;
-        TUtils.Test("read/write " + typ + " (" + input + ")", () =>
+        TUtils.RunTest("read/write " + typ + " (" + input + ")", () =>
         {
-            bw.Position = 0;
+            bw.Write(input);
+            int wSize = data.PopPtr();
+
+            if (!TUtils.MatchBitsInStream(input, data.Stream, out string mask))
+            {
+                TUtils.WriteFail($"FAIL w-bits:'{mask}'");
+                return TestResult.Failure;
+            }
+            data.ResetPtr();
+
+            T result = br.Read<T>();
+            int rSize = data.PopPtr();
+
+            if (wSize != rSize)
+            {
+                TUtils.WriteFail($"FAIL w:{wSize} != r:{rSize}");
+                return TestResult.Failure;
+            }
+            if (!TUtils.MatchBitsInStream(result, data.Stream, out mask))
+            {
+                TUtils.WriteFail($"FAIL r-bits:'{mask}'");
+                return TestResult.Failure;
+            }
+            data.ResetPtr();
+            if (!result.Equals(input))
+            { 
+                TUtils.WriteFail($"FAIL r-v:'{result}'");
+                return TestResult.Failure;
+            }
+
+            TUtils.WriteSucces($"OK {wSize}b");
+            return TestResult.Success;
+        });
+
+        data.Destroy();
+    }
+    public static void WriteReadGeneric<T>(T value1, T value2) where T : unmanaged
+    {
+        WriteReadGeneric(value1);
+        WriteReadGeneric(value2);
+    }
+
+    public static void WriteReadSerializable<T>(T input)
+    {
+        var data = new TestData();
+        var bw = data.Writer;
+        var br = data.Reader;
+
+        string typ = typeof(T).Name;
+        TUtils.RunTest("read/write " + typ + " (" + input + ")", () =>
+        {
             bw.Serialize(input);
-            var size = bw.Position;
-            bw.Position = 0;
+            var size = data.PopPtr();
             T result = br.Deserialize<T>();
             if (result.Equals(input))
             {
@@ -140,7 +202,7 @@ static class Tests
 
         data.Destroy();
     }
-    public static void testArray<T>(string typeName, T[] input, LengthPrefix lengthPrefix = LengthPrefix.Default)
+    public static void WriteReadStringArray<T>(string typeName, T[] input, LengthPrefix lengthPrefix = LengthPrefix.Default)
     {
         var data = new TestData();
         var bw = data.Writer;
@@ -153,11 +215,10 @@ static class Tests
         var read = (Func<T[]>)readInfo.CreateDelegate(typeof(Func<T[]>), br);
 
         string typ = typeof(T).Name;
-        TUtils.Test("read/write " + typ + "[] (" + TUtils.IListToString(input) + ")", () =>
+        TUtils.RunTest("read/write " + typ + "[] (" + TUtils.IListToString(input) + ")", () =>
         {
-            bw.Position = 0;
             write(input);
-            bw.Position = 0;
+            data.ResetPtr();
             T[] result = read();
             if (input.Length != result.Length)
             {
@@ -178,14 +239,14 @@ static class Tests
 
         data.Destroy();
     }
-    public static void testGArray<T>(T[] input, LengthPrefix lengthPrefix = LengthPrefix.Int32) where T : unmanaged
+    public static void WriteReadGenericArray<T>(T[] input, LengthPrefix lengthPrefix = LengthPrefix.Int32) where T : unmanaged
     {
         var data = new TestData();
         var bw = data.Writer;
         var br = data.Reader;
 
         string typ = typeof(T).Name;
-        TUtils.Test($"read/write {typ}[].length:{lengthPrefix} ({TUtils.IListToString(input)})", () =>
+        TUtils.RunTest($"read/write {typ}[].length:{lengthPrefix} ({TUtils.IListToString(input)})", () =>
         {
             bw.Position = 0;
             bw.WriteArray(input, lengthPrefix);
@@ -211,7 +272,7 @@ static class Tests
         data.Destroy();
     }
 
-    public static void testMap(int size, bool compressed)
+    public static void WriteReadMap(int size, bool compressed)
     {
         for (int it = 0; it < 6; it++)
         {
@@ -225,7 +286,7 @@ static class Tests
             for (int i = 0; i < size; i++)
                 mapLayer2[i] = (byte)(rnd.NextDouble() * 2f);
 
-            TUtils.Test($"save {(compressed ? "c" : "u")}map {size}x{size}", () =>
+            TUtils.RunTest($"save {(compressed ? "c" : "u")}map {size}x{size}", () =>
             {
 
                 using (var binaryView = new BinaryViewWriter("test.dat"))
@@ -240,11 +301,11 @@ static class Tests
                     binaryView.WriteArray(mapLayer3);
                 }
 
-                TUtils.WriteSucces($"OK {new FileInfo("test.dat").Length}b");
+                TUtils.WriteSucces($"OK {TUtils.ElapsedMilliseconds}ms {new FileInfo("test.dat").Length}b");
                 return TestResult.Success;
 
             });
-            TUtils.Test($"load {(compressed ? "c" : "u")}map {size}x{size}", () =>
+            TUtils.RunTest($"load {(compressed ? "c" : "u")}map {size}x{size}", () =>
             {
                 bool result = true;
                 using (var binaryView = new BinaryViewReader("test.dat"))
@@ -260,19 +321,17 @@ static class Tests
                 }
                 if (result)
                 {
-                    TUtils.WriteSucces("OK");
+                    TUtils.WriteSucces($"OK {TUtils.ElapsedMilliseconds}ms");
                     return TestResult.Success;
                 }
                 else
                 {
-                    TUtils.WriteFail("FAIL");
+                    TUtils.WriteFail($"FAIL {TUtils.ElapsedMilliseconds}ms");
                     return TestResult.Failure;
                 }
             });
             size *= 2;
         }
     }
-
-
 }
 

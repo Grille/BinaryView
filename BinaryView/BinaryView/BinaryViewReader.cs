@@ -6,82 +6,123 @@ using System.Collections.Generic;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using System;
+using System.Runtime.CompilerServices;
 
 namespace GGL.IO;
 
 public class BinaryViewReader : IDisposable
 {
 
-    private byte[] readBuffer = new byte[16];
-    private Stream baseStream;
+    private byte[] readBuffer = new byte[Utils.DefaultBufferSize];
     private Stream readStream;
 
-    private Stack<(Stream, object)> streamStack = new();
-
-    private bool closeStream = true;
     private BinaryFormatter formatter = new BinaryFormatter();
 
-    public long Position
+    private int _bufferSize = Utils.DefaultBufferSize;
+    private LengthPrefix _lengthPrefix = LengthPrefix.UInt32;
+    private CharSizePrefix _charSizePrefix = CharSizePrefix.Char;
+    private Endianness _bitOrder = Endianness.Default;
+    private Endianness _byteOrder = Endianness.Default;
+    private bool needBitReorder = false;
+    private bool needByteReorder = false;
+    private bool needReorder = false;
+
+    public readonly StreamStack StreamStack;
+    public Endianness BitOrder
     {
-        get => readStream.Position;
-        set => readStream.Position = value;
+        get => _bitOrder;
+        set
+        {
+            _bitOrder = value;
+            needBitReorder = _bitOrder != Endianness.Default;
+            needReorder = _bitOrder != Endianness.Default || _byteOrder != Endianness.Default;
+        }
     }
-    public long Length
+    public Endianness ByteOrder
     {
-        get => readStream.Length;
-        set => readStream.SetLength(value);
+        get => _bitOrder;
+        set
+        {
+            _byteOrder = value;
+            needByteReorder = _byteOrder != Endianness.Default;
+            needReorder = _bitOrder != Endianness.Default || _byteOrder != Endianness.Default;
+        }
     }
 
-    private LengthPrefix _lengthPrefix = LengthPrefix.UInt32;
+    public int BufferSize
+    {
+        get => _bufferSize;
+        set {
+            _bufferSize = value;
+            readBuffer = new byte[_bufferSize];
+        }
+    }
+
     public LengthPrefix DefaultLengthPrefix
     {
         get => _lengthPrefix;
         set
         {
             if (value == LengthPrefix.Default)
-                throw new InvalidOperationException("DefaultLengthPrefix can't set to Default!");
+                throw new ArgumentException("DefaultLengthPrefix can't be set to Default!");
             _lengthPrefix = value;
         }
     }
 
-    private CharSizePrefix _charSizePrefix = CharSizePrefix.Char;
     public CharSizePrefix DefaultCharSizePrefix
     {
         get => _charSizePrefix;
         set
         {
             if (value == CharSizePrefix.Default)
-                throw new InvalidOperationException("DefaultCharSizePrefix can't set to Default!");
+                throw new ArgumentException("DefaultCharSizePrefix can't be set to Default!");
             _charSizePrefix = value;
         }
     }
 
-    /// <summary>Initialize BinaryView with a empty MemoryStream</summary>
-    public BinaryViewReader()
+    public long Position
     {
-        baseStream = new MemoryStream();
-        PushStream(baseStream);
+        get => readStream.Position;
+        set => readStream.Position = value;
     }
+
+    public long Length
+    {
+        get => readStream.Length;
+        set => readStream.SetLength(value);
+    }
+
+
+    /// <summary>Initialize BinaryView with a empty MemoryStream</summary>
+    public BinaryViewReader() : 
+        this(new StreamStack(new MemoryStream(),true)) 
+    { }
+
     /// <summary>Initialize BinaryView with a FileStream</summary>
     /// <param name="path">File path</param>
-    public BinaryViewReader(string path)
-    {
-        baseStream = new FileStream(path, FileMode.Open, FileAccess.Read);
-        PushStream(baseStream);
-    }
+    public BinaryViewReader(string path) : 
+        this(new StreamStack(new FileStream(path, FileMode.Open, FileAccess.Read), true)) 
+    { }
+
     /// <summary>Initialize BinaryView with a MemoryStream filled with bytes from array</summary>
     /// <param name="bytes">Base array</param>
-    public BinaryViewReader(byte[] bytes)
-    {
-        baseStream = new MemoryStream(bytes);
-        PushStream(baseStream);
-    }
+    public BinaryViewReader(byte[] bytes) : 
+        this(new StreamStack(new MemoryStream(bytes), true)) 
+    { }
+
     /// <summary>Initialize BinaryView with a Stream</summary>
-    public BinaryViewReader(Stream stream, bool closeStream = false)
+    public BinaryViewReader(Stream stream, bool closeStream = false) :
+        this(new StreamStack(stream, closeStream))
+    { }
+
+    public BinaryViewReader(StreamStack stack)
     {
-        baseStream = stream;
-        PushStream(baseStream);
-        this.closeStream = closeStream;
+        StreamStack = stack;
+        StreamStack.StackChanged += (object sender, StreamStackEntry e) =>
+        {
+            readStream = e.Stream;
+        };
+        readStream = StreamStack.Peek().Stream;
     }
 
     #region read
@@ -90,10 +131,34 @@ public class BinaryViewReader : IDisposable
     public unsafe T Read<T>() where T : unmanaged
     {
         int size = sizeof(T);
-        var obj = new T();
-        var ptr = new IntPtr(&obj);
-        for (int i = 0; i < size; i++) Marshal.WriteByte(ptr, i, ReadByte());
-        return obj;
+
+        switch (size)
+        {
+            case 1:
+            {
+                byte data = (byte)readStream.ReadByte();
+
+                if (needBitReorder)
+                    data = Utils.BitReverseTable[data];
+
+                var obj = *(T*)&data;
+                return obj;
+            }
+            default:
+            {
+                readStream.Read(readBuffer, 0, size);
+
+                fixed (byte* dataPtr = readBuffer)
+                {
+                    var obj = *(T*)&dataPtr[0];
+
+                    if (needReorder)
+                        Utils.ReverseObjBits(&obj, needByteReorder, needBitReorder);
+
+                    return obj;
+                }
+            }
+        }
     }
 
     /// <summary>Reads an serialized object from the stream and increases the position by the size of the data</summary>
@@ -167,72 +232,38 @@ public class BinaryViewReader : IDisposable
     }
 
     /// <summary>Reads a byte from the stream and increases the position by one byte</summary>
-    public byte ReadByte() => (byte)readStream.ReadByte();
+    public unsafe byte ReadByte() => Read<byte>();
 
     /// <summary>Reads a sbyte from the stream and increases the position by one byte</summary>
-    public sbyte ReadSByte() => (sbyte)readStream.ReadByte();
+    public unsafe sbyte ReadSByte() => Read<sbyte>();
 
     /// <summary>Reads a ushort from the stream and increases the position by two bytes</summary>
-    public ushort ReadUInt16()
-    {
-        readStream.Read(readBuffer, 0, sizeof(ushort));
-        return BitConverter.ToUInt16(readBuffer, 0);
-    }
+    public unsafe ushort ReadUInt16() => Read<ushort>();
 
     /// <summary>Reads a short from the stream and increases the position by two bytes</summary>
-    public short ReadInt16()
-    {
-        readStream.Read(readBuffer, 0, sizeof(short));
-        return BitConverter.ToInt16(readBuffer, 0);
-    }
+    public unsafe short ReadInt16() => Read<short>();
 
     /// <summary>Reads a uint from the stream and increases the position by four bytes</summary>
-    public uint ReadUInt32()
-    {
-        readStream.Read(readBuffer, 0, sizeof(uint));
-        return BitConverter.ToUInt32(readBuffer, 0);
-    }
+    public unsafe uint ReadUInt32() => Read<uint>();
 
     /// <summary>Reads a int from the stream and increases the position by four bytes</summary>
-    public int ReadInt32()
-    {
-        readStream.Read(readBuffer, 0, sizeof(int));
-        return BitConverter.ToInt32(readBuffer, 0);
-    }
+    public unsafe int ReadInt32() => Read<int>();
 
     /// <summary>Reads a ulong from the stream and increases the position by eight bytes</summary>
-    public ulong ReadUInt64()
-    {
-        readStream.Read(readBuffer, 0, sizeof(ulong));
-        return BitConverter.ToUInt64(readBuffer, 0);
-    }
+    public unsafe ulong ReadUInt64() => Read<ulong>();
 
     /// <summary>Reads a long from the stream and increases the position by eight bytes</summary>
-    public long ReadInt64()
-    {
-        readStream.Read(readBuffer, 0, sizeof(long));
-        return BitConverter.ToInt64(readBuffer, 0);
-    }
+    public unsafe long ReadInt64() => Read<long>();
 
     /// <summary>Reads a float from the stream and increases the position by four bytes</summary>
-    public float ReadSingle()
-    {
-        readStream.Read(readBuffer, 0, sizeof(float));
-        return BitConverter.ToSingle(readBuffer, 0);
-    }
+    public unsafe float ReadSingle() => Read<float>();
 
     /// <summary>Reads a double from the stream and increases the position by eight bytes</summary>
-    public double ReadDouble()
-    {
-        readStream.Read(readBuffer, 0, sizeof(double));
-        return BitConverter.ToDouble(readBuffer, 0);
-    }
+    public unsafe double ReadDouble() => Read<double>();
 
     /// <summary>Reads a decimal from the stream and increases the position by sixteen bytes</summary>
-    public decimal ReadDecimal()
-    {
-        return Read<decimal>();
-    }
+    public unsafe decimal ReadDecimal() => Read<decimal>();
+
 
     /// <summary>Reads a string from the stream</summary>
     public string ReadString(LengthPrefix lengthPrefix = LengthPrefix.Default, CharSizePrefix charSizePrefix = CharSizePrefix.Default)
@@ -291,64 +322,30 @@ public class BinaryViewReader : IDisposable
     /// <summary>Decompress all data with DeflateStream, must be executet before any read operation</summary>
     public void DecompressAll()
     {
-        var decompressedStream = new MemoryStream();
-
-        using (var decompressor = new DeflateStream(baseStream, CompressionMode.Decompress, true))
-        {
-            //readStream.Seek(0, SeekOrigin.Begin);
-            decompressor.CopyTo(decompressedStream);
-        }
-        decompressedStream.Seek(0, SeekOrigin.Begin);
-
-        // replace compressed baseStream with decompressedStream 
-        baseStream.Dispose();
-        baseStream = decompressedStream;
-        readStream = baseStream;
+        beginDeflateSection(readStream.Length);
     }
     /// <summary>Decompress data with DeflateStream, position will reset</summary>
-    public void BeginDeflateSection()
+    public void BeginDeflateSection(LengthPrefix lengthPrefix = LengthPrefix.Default)
     {
-        var DecompressedStream = new MemoryStream();
+        long length = readLengthPrefix(lengthPrefix);
+        beginDeflateSection(length);
+    }
 
-        long length = ReadInt64();
-        using (var compressedSection = ReadStream(length))
+    private void beginDeflateSection(long length)
+    {
+        using (var compressedSection = StreamStack.GetSubStream(length))
         {
+            StreamStack.Create();
             using (var decompressStream = new DeflateStream(compressedSection, CompressionMode.Decompress, true))
             {
-                decompressStream.CopyTo(DecompressedStream);
+                StreamStack.CopyToPeak(decompressStream, true);
             }
         }
-        DecompressedStream.Seek(0, SeekOrigin.Begin);
-        PushStream(DecompressedStream);
     }
 
     public void EndDeflateSection()
     {
-        CloseStream();
-    }
-
-    public void PushStream(Stream stream, object args = null)
-    {
-        streamStack.Push((stream, args));
-        readStream = stream;
-    }
-
-    public (Stream stream, object args) PeekStream()
-    {
-        return streamStack.Peek();
-    }
-
-    public void CloseStream()
-    {
-        (var stream, _) = streamStack.Pop();
-        stream.Dispose();
-        (readStream, _) = PeekStream();
-    }
-
-    public Stream ReadStream(long length)
-    {
-        var stream = new SubStream(readStream, readStream.Position, length);
-        return stream;
+        StreamStack.DisposePeak();
     }
 
     #region IDisposable Support
@@ -358,8 +355,7 @@ public class BinaryViewReader : IDisposable
     {
         if (!disposedValue)
         {
-            if (disposing) { }
-            baseStream.Dispose();
+            StreamStack.Dispose();
 
             disposedValue = true;
         }

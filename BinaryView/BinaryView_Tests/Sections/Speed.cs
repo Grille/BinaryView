@@ -2,7 +2,7 @@
 namespace BinaryView_Tests;
 partial class Section
 {
-    public static void S08Speed()
+    public static void Speed()
     {
         TUtils.WriteTitle("test speed");
 
@@ -14,7 +14,10 @@ partial class Section
         var bw = data.Writer;
         var br = data.Reader;
 
-        TUtils.Test("WriteByte x100000 time", () =>
+        //bw.BitOrder = GGL.IO.Endianness.BigEndian;
+        //br.BitOrder = GGL.IO.Endianness.BigEndian;
+
+        TUtils.RunTest("WriteByte x100000 time", () =>
         {
             stream.Seek(0, SeekOrigin.Begin);
             watch.Restart();
@@ -27,7 +30,7 @@ partial class Section
             TUtils.WriteSucces($"OK {watch.Elapsed.TotalMilliseconds}ms");
             return TestResult.Success;
         });
-        TUtils.Test("ReadByte x100000 time", () =>
+        TUtils.RunTest("ReadByte x100000 time", () =>
         {
             stream.Seek(0, SeekOrigin.Begin);
             watch.Restart();
@@ -41,7 +44,7 @@ partial class Section
             return TestResult.Success;
         });
 
-        TUtils.Test("Write<byte> x100000 time", () =>
+        TUtils.RunTest("Write<byte> x100000 time", () =>
         {
             stream.Seek(0, SeekOrigin.Begin);
             watch.Restart();
@@ -55,7 +58,7 @@ partial class Section
             return TestResult.Success;
         });
 
-        TUtils.Test("Read<byte> x100000 time", () =>
+        TUtils.RunTest("Read<byte> x100000 time", () =>
         {
             stream.Seek(0, SeekOrigin.Begin);
             watch.Restart();
@@ -69,7 +72,7 @@ partial class Section
             return TestResult.Success;
         });
 
-        TUtils.Test("WriteDouble x100000 time", () =>
+        TUtils.RunTest("WriteDouble x100000 time", () =>
         {
             stream.Seek(0, SeekOrigin.Begin);
             watch.Restart();
@@ -82,7 +85,7 @@ partial class Section
             TUtils.WriteSucces($"OK {watch.Elapsed.TotalMilliseconds}ms");
             return TestResult.Success;
         });
-        TUtils.Test("ReadDouble x100000 time", () =>
+        TUtils.RunTest("ReadDouble x100000 time", () =>
         {
             stream.Seek(0, SeekOrigin.Begin);
             watch.Restart();
@@ -96,7 +99,7 @@ partial class Section
             return TestResult.Success;
         });
 
-        TUtils.Test("Write<double> x100000 time", () =>
+        TUtils.RunTest("Write<double> x100000 time", () =>
         {
             stream.Seek(0, SeekOrigin.Begin);
             watch.Restart();
@@ -110,7 +113,7 @@ partial class Section
             return TestResult.Success;
         });
 
-        TUtils.Test("Read<double> x100000 time", () =>
+        TUtils.RunTest("Read<double> x100000 time", () =>
         {
             stream.Seek(0, SeekOrigin.Begin);
             watch.Restart();

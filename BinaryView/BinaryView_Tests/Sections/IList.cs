@@ -2,7 +2,7 @@
 namespace BinaryView_Tests;
 partial class Section
 {
-    public static void S04IList()
+    public static void IList()
     {
         TUtils.WriteTitle("test IList");
 
@@ -14,7 +14,7 @@ partial class Section
         for (int i = 0; i < size; i++)
             data0[i] = (byte)(rnd.NextDouble() * 255f);
 
-        TUtils.Test("Read to new List", () =>
+        TUtils.RunTest("Read to new List", () =>
         {
             var bw = new BinaryViewWriter();
             bw.WriteIList(data0);
@@ -36,7 +36,7 @@ partial class Section
             return TestResult.Success;
         });
 
-        TUtils.Test("Read no Prefix", () =>
+        TUtils.RunTest("Read no Prefix", () =>
         {
             var bw = new BinaryViewWriter();
             bw.WriteIList(data0, LengthPrefix.None);
@@ -60,7 +60,7 @@ partial class Section
             return TestResult.Success;
         });
 
-        TUtils.Test("Read Remainder", () =>
+        TUtils.RunTest("Read Remainder", () =>
         {
             var bw = new BinaryViewWriter();
             bw.WriteIList(data0, LengthPrefix.None);
@@ -82,7 +82,7 @@ partial class Section
             return TestResult.Success;
         });
 
-        TUtils.Test("Read Remainder", () =>
+        TUtils.RunTest("Read Remainder", () =>
         {
             var bw = new BinaryViewWriter();
             bw.WriteIList(data0, LengthPrefix.None);

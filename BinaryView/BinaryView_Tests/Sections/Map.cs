@@ -2,11 +2,11 @@
 namespace BinaryView_Tests;
 partial class Section
 {
-    public static void S07Map()
+    public static void Map()
     {
         TUtils.WriteTitle("test map");
 
-        Tests.testMap(512, false);
-        Tests.testMap(512, true);
+        Tests.WriteReadMap(2048, false);
+        Tests.WriteReadMap(2048, true);
     }
 }

@@ -22,28 +22,36 @@ internal static class TUtils
     static int failureCount = 0;
     static int errorCount = 0;
 
-    public static void Test(string name, Func<TestResult> test)
+    public static Stopwatch Watch = new Stopwatch();
+
+    public static double ElapsedMilliseconds
     {
+        get => Watch.Elapsed.TotalMilliseconds;
+    }
+
+    public static void RunTest(string name, Func<TestResult> test)
+    {
+        Watch.Reset();
+
         Write($"{name}: ");
         TestResult result;
-        if (CatchExeptions)
-        {
-            try
-            {
-                result = test();
-            }
-            catch (Exception e)
-            {
-                Write("\n");
-                WriteError(e.ToString());
-                result = TestResult.Error;
 
-            }
-        }
-        else
+        try
         {
+            Watch.Start();
             result = test();
         }
+        catch (Exception e)
+        {
+            Write("\n");
+            WriteError(e.ToString());
+            result = TestResult.Error;
+
+            if (!CatchExeptions)
+                throw;
+        }
+        Watch.Stop();
+
         Write("\n");
 
         switch (result)
@@ -108,12 +116,59 @@ internal static class TUtils
     }
     public static string IListToString<T>(IList<T> array)
     {
-        string result = "";
-        for (int i = 0; i < array.Count; i++)
+        var sb = new StringBuilder();
+        sb.Append($"[{array.Count}] ");
+        int max = 16;
+        int size = Math.Min(array.Count, 16);
+        for (int i = 0; i < size; i++)
         {
-            result += "" + array[i];
-            if (i < array.Count - 1) result += ",";
+            sb.Append(array[i]);
+            if (i < size - 1)
+                sb.Append(",");
+            else if (size < array.Count)
+                sb.Append("...");
         }
+        return sb.ToString();
+    }
+
+    public unsafe static bool MatchBitsInStream<T>(T value, Stream stream, out string mask) where T : unmanaged
+    {
+        int size = sizeof(T);
+        int bitSize = size * 8;
+
+        byte* valueBufferPtr = (byte*)&value;
+        byte[] streamBuffer = new byte[size];
+        stream.Read(streamBuffer, 0, size);
+
+        bool result = true;
+
+        var sb = new StringBuilder();
+
+        sb.Append("0b");
+
+        for (int iByte = 0; iByte < size; iByte++)
+        {
+            for (int iBit = 0; iBit < 8; iBit++)
+            {
+                bool valueBit = ((*(valueBufferPtr + iByte) >> iBit) & 1) == 1;
+                bool streamBit = ((streamBuffer[iByte] >> iBit) & 1) == 1;
+
+                if (iBit == 0)
+                    sb.Append("_");
+
+                if (valueBit == streamBit)
+                {
+                    sb.Append(valueBit ? "1" : "0");
+                }
+                else
+                {
+                    sb.Append(valueBit ? "!" : "-");
+                    result = false;
+                }
+            }
+        }
+
+        mask = sb.ToString();
         return result;
     }
 }

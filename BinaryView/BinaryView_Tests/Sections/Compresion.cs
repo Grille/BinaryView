@@ -2,7 +2,7 @@
 namespace BinaryView_Tests;
 partial class Section
 {
-    public static void S06Compresion()
+    public static void Compresion()
     {
         TUtils.WriteTitle("test compresion");
 
@@ -20,7 +20,7 @@ partial class Section
         for (int i = 0; i < size; i++)
             data2[i] = (byte)(rnd.NextDouble() * 255f);
 
-        TUtils.Test("Compress All", () =>
+        TUtils.RunTest("Compress All", () =>
         {
             var bw = new BinaryViewWriter();
             bw.CompressAll();
@@ -30,7 +30,7 @@ partial class Section
 
             if (file.Length == 0)
             {
-                TUtils.WriteFail($"FAIL file length is 0");
+                TUtils.WriteFail($"FAIL w-file length is 0");
                 return TestResult.Failure;
             }
 
@@ -48,7 +48,7 @@ partial class Section
             return TestResult.Success;
         });
 
-        TUtils.Test("Compress Section", () =>
+        TUtils.RunTest("Compress Section", () =>
         {
             var bw = new BinaryViewWriter();
             bw.BeginDeflateSection();
@@ -78,7 +78,7 @@ partial class Section
             return TestResult.Success;
         });
 
-        TUtils.Test("Compress Empty Section", () =>
+        TUtils.RunTest("Compress Empty Section", () =>
         {
             var bw = new BinaryViewWriter();
             bw.BeginDeflateSection();
@@ -108,7 +108,7 @@ partial class Section
             return TestResult.Success;
         });
 
-        TUtils.Test("Compress 2 Sections Sequential", () =>
+        TUtils.RunTest("Compress 2 Sections Sequential", () =>
         {
             var bw = new BinaryViewWriter();
             bw.BeginDeflateSection();
@@ -156,7 +156,7 @@ partial class Section
             return TestResult.Success;
         });
 
-        TUtils.Test("Compress 2 Sections Nested", () =>
+        TUtils.RunTest("Compress 2 Sections Nested", () =>
         {
             var bw = new BinaryViewWriter();
 
