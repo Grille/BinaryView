@@ -125,6 +125,7 @@ public class BinaryViewReader : IDisposable
         readStream = StreamStack.Peek().Stream;
     }
 
+
     #region read
     /// <summary>Reads a primitive or unmanaged struct from the stream and increases the position by the size of the struct</summary>
     /// <typeparam name="T"></typeparam> Type of unmanaged struct
@@ -174,6 +175,14 @@ public class BinaryViewReader : IDisposable
     public unsafe T[] ReadArray<T>(LengthPrefix lengthPrefix = LengthPrefix.Default) where T : unmanaged
     {
         long length = readLengthPrefix(lengthPrefix);
+        return ReadArray<T>(length);
+    }
+
+    /// <summary>Reads a array of unmanaged structs from the stream and increases the position by the size of the array elements</summary>
+    /// <typeparam name="T"></typeparam> Type of unmanaged struct
+    /// <param name="length">Amount of elements to read</param>
+    public unsafe T[] ReadArray<T>(long length) where T : unmanaged
+    {
         T[] array = new T[length];
         for (int i = 0; i < array.Length; i++) array[i] = Read<T>();
         return array;
@@ -319,19 +328,33 @@ public class BinaryViewReader : IDisposable
     }
     #endregion
 
+
+    public long Seek(long offset, SeekOrigin origin = SeekOrigin.Begin)
+    {
+        return readStream.Seek(offset, origin);
+    }
+
+    public long Exch(long offset, SeekOrigin origin = SeekOrigin.Begin)
+    {
+        long pos = readStream.Position;
+        readStream.Seek(offset, origin);
+        return pos;
+    }
+
+
     /// <summary>Decompress all data with DeflateStream, must be executet before any read operation</summary>
     public void DecompressAll()
     {
-        beginDeflateSection(readStream.Length);
+        BeginDeflateSection(readStream.Length);
     }
     /// <summary>Decompress data with DeflateStream, position will reset</summary>
     public void BeginDeflateSection(LengthPrefix lengthPrefix = LengthPrefix.Default)
     {
         long length = readLengthPrefix(lengthPrefix);
-        beginDeflateSection(length);
+        BeginDeflateSection(length);
     }
 
-    private void beginDeflateSection(long length)
+    public void BeginDeflateSection(long length)
     {
         using (var compressedSection = StreamStack.GetSubStream(length))
         {

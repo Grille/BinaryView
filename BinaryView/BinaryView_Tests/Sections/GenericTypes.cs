@@ -19,7 +19,7 @@ partial class Section
         Tests.WriteReadGeneric(float.MinValue, float.MaxValue);
         Tests.WriteReadGeneric(double.MinValue, double.MaxValue);
         Tests.WriteReadGeneric(decimal.MinValue, decimal.MaxValue);
-        Tests.WriteReadGeneric(new TUtils.Struct() { A = 42, B = 3.6f });
+        Tests.WriteReadGeneric(new TUtils.Struct(42, 3.6f));
         Tests.WriteReadGeneric(new DateTime(2020, 07, 20, 15, 54, 24));
         Tests.WriteReadGeneric(new Point(10, 42));
         Tests.WriteReadGeneric(new RectangleF(10, 42, 25.5f, 23));

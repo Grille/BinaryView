@@ -14,9 +14,9 @@ partial class Section
         Tests.WriteReadGenericArray(new byte[] { 0, 2, 4, 6 }, LengthPrefix.Int64);
         Tests.WriteReadGenericArray(new int[] { 0, -2, 4, -6 });
         Tests.WriteReadGenericArray(new float[] { 0, -2.5f, 4.25f, -6.66f });
-        Tests.WriteReadGenericArray(new TUtils.Struct[] { new TUtils.Struct() { A = 42, B = 3.6f }, new TUtils.Struct() { A = 36, B = 1.666f } });
+        Tests.WriteReadGenericArray(new TUtils.Struct[] { new(42, 3.6f), new(36, 1.666f) });
         Tests.WriteReadStringArray("StringArray", new string[] { "ab", "cd", "ef", "gh" });
 
-        data.Destroy();
+        data.Dispose();
     }
 }

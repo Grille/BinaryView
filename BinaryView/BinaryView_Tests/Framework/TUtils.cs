@@ -8,12 +8,33 @@ namespace BinaryView_Tests;
 
 internal static class TUtils
 {
-    public struct Struct
+    public record struct Struct(int A, float B)
     {
-        public int A;
-        public float B;
         public override string ToString() => "{A:" + A + ";B:" + B + "}";
-        public override bool Equals(object obj) => A == ((Struct)obj).A && B == ((Struct)obj).B;
+    }
+
+    public struct UInt24
+    {
+        public byte A;
+        public byte B;
+        public byte C;
+
+        public static unsafe implicit operator UInt24(uint value) => *(UInt24*)&value;
+        public static unsafe implicit operator uint(UInt24 value)
+        {
+            uint dst = 0;
+            byte* srcPtr = (byte*)&value;
+            byte* dstPtr = (byte*)&dst;
+
+            dstPtr[0] = srcPtr[0];
+            dstPtr[1] = srcPtr[1];
+            dstPtr[2] = srcPtr[2];
+
+            return dst;
+        }
+
+        public override string ToString() => ((uint)this).ToString();
+        public override bool Equals(object obj) => (uint)this == (uint)(UInt24)obj;
     }
 
     public static bool CatchExeptions = false;
@@ -110,14 +131,14 @@ internal static class TUtils
         if (array1.Count != array2.Count)
             return false;
         for (int i = 0; i < array2.Count; i++)
-            if ("" + array2[i] != "" + array1[i])
+            if (!array2[i].Equals(array1[i]))
                 return false;
         return true;
     }
     public static string IListToString<T>(IList<T> array)
     {
         var sb = new StringBuilder();
-        sb.Append($"[{array.Count}] ");
+        sb.Append($"[{array.Count}]{{");
         int max = 16;
         int size = Math.Min(array.Count, 16);
         for (int i = 0; i < size; i++)
@@ -128,6 +149,7 @@ internal static class TUtils
             else if (size < array.Count)
                 sb.Append("...");
         }
+        sb.Append("}");
         return sb.ToString();
     }
 
@@ -169,6 +191,22 @@ internal static class TUtils
         }
 
         mask = sb.ToString();
+        return result;
+    }
+
+    public static bool AssertValueIsEqual<T>(T value0, T value1, string msg = "")
+    {
+        bool result = !value0.Equals(value1);
+        if (result)
+            WriteFail($"FAIL value: {value0} expected: {value1} {msg}");
+        return result;
+    }
+
+    public static bool AssertIListIsEqual<T>(IList<T> array0, IList<T> array1, string msg = "") where T : unmanaged
+    {
+        bool result = !IsIListEqual(array0, array1);
+        if (result)
+            WriteFail($"FAIL data: {IListToString(array0)} expected: {IListToString(array1)} {msg}");
         return result;
     }
 }

@@ -47,7 +47,7 @@ static class Tests
             }
         });
 
-        data.Destroy();
+        data.Dispose();
     }
 
     public static void WriteReadString(string str, LengthPrefix lengthPrefix = LengthPrefix.Default, CharSizePrefix charSizePrefix = CharSizePrefix.Default)
@@ -75,7 +75,7 @@ static class Tests
             }
         });
 
-        data.Destroy();
+        data.Dispose();
     }
 
     public static void Endianness<T>(string endianness, T input, T mask) where T : unmanaged
@@ -122,7 +122,7 @@ static class Tests
             return TestResult.Success;
         });
 
-        data.Destroy();
+        data.Dispose();
     }
 
     public static void WriteReadGeneric<T>(T input) where T : unmanaged
@@ -168,7 +168,7 @@ static class Tests
             return TestResult.Success;
         });
 
-        data.Destroy();
+        data.Dispose();
     }
     public static void WriteReadGeneric<T>(T value1, T value2) where T : unmanaged
     {
@@ -200,7 +200,7 @@ static class Tests
             }
         });
 
-        data.Destroy();
+        data.Dispose();
     }
     public static void WriteReadStringArray<T>(string typeName, T[] input, LengthPrefix lengthPrefix = LengthPrefix.Default)
     {
@@ -237,7 +237,7 @@ static class Tests
             }
         });
 
-        data.Destroy();
+        data.Dispose();
     }
     public static void WriteReadGenericArray<T>(T[] input, LengthPrefix lengthPrefix = LengthPrefix.Int32) where T : unmanaged
     {
@@ -269,7 +269,7 @@ static class Tests
             }
         });
 
-        data.Destroy();
+        data.Dispose();
     }
 
     public static void WriteReadMap(int size, bool compressed)

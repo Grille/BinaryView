@@ -127,6 +127,6 @@ partial class Section
             return TestResult.Success;
         });
 
-        data.Destroy();
+        data.Dispose();
     }
 }

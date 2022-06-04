@@ -16,21 +16,21 @@ partial class Section
 
         TUtils.RunTest("Read to new List", () =>
         {
-            var bw = new BinaryViewWriter();
-            bw.WriteIList(data0);
-            bw.Dispose();
-            var file = bw.ToArray();
+            using var test = new TestData();
+            var bw = test.Writer;
+            var br = test.Reader;
 
-            var br = new BinaryViewReader(file);
+            //setup
+            bw.WriteIList(data0);
+            test.ResetPtr();
+
+            //read
             var list = new List<byte>();
             br.ReadToIList(list);
-            br.Dispose();
 
-            if (!TUtils.IsIListEqual(data0, list))
-            {
-                TUtils.WriteFail($"FAIL data: {TUtils.IListToString(list)}, expected: {TUtils.IListToString(data0)}");
+            if (TUtils.AssertIListIsEqual(data0, list))
                 return TestResult.Failure;
-            }
+
 
             TUtils.WriteSucces($"OK");
             return TestResult.Success;
@@ -38,23 +38,23 @@ partial class Section
 
         TUtils.RunTest("Read no Prefix", () =>
         {
-            var bw = new BinaryViewWriter();
-            bw.WriteIList(data0, LengthPrefix.None);
-            bw.Dispose();
-            var file = bw.ToArray();
+            using var test = new TestData();
+            var bw = test.Writer;
+            var br = test.Reader;
 
-            var br = new BinaryViewReader(file);
+            //setup
+            bw.WriteIList(data0, LengthPrefix.None);
+            test.ResetPtr();
+
+            //read
             var list = new List<byte>();
             br.ReadToIList(list, 0, size - 2);
             list.Add(br.ReadByte());
             list.Add(br.ReadByte());
-            br.Dispose();
 
-            if (!TUtils.IsIListEqual(data0, list))
-            {
-                TUtils.WriteFail($"FAIL data: {TUtils.IListToString(list)}, expected: {TUtils.IListToString(data0)}");
+            if (TUtils.AssertIListIsEqual(data0, list))
                 return TestResult.Failure;
-            }
+
 
             TUtils.WriteSucces($"OK");
             return TestResult.Success;
@@ -62,21 +62,22 @@ partial class Section
 
         TUtils.RunTest("Read Remainder", () =>
         {
-            var bw = new BinaryViewWriter();
-            bw.WriteIList(data0, LengthPrefix.None);
-            bw.Dispose();
-            var file = bw.ToArray();
+            using var test = new TestData();
+            var bw = test.Writer;
+            var br = test.Reader;
 
-            var br = new BinaryViewReader(file);
+            //setup
+            bw.WriteIList(data0, LengthPrefix.None);
+            test.ResetPtr();
+
+            //read
             var list = new List<byte>();
             br.ReadRemainderToIList(list, 0);
             br.Dispose();
 
-            if (!TUtils.IsIListEqual(data0, list))
-            {
-                TUtils.WriteFail($"FAIL data: {TUtils.IListToString(list)}, expected: {TUtils.IListToString(data0)}");
+            if (TUtils.AssertIListIsEqual(data0, list))
                 return TestResult.Failure;
-            }
+
 
             TUtils.WriteSucces($"OK");
             return TestResult.Success;
@@ -84,25 +85,57 @@ partial class Section
 
         TUtils.RunTest("Read Remainder", () =>
         {
-            var bw = new BinaryViewWriter();
-            bw.WriteIList(data0, LengthPrefix.None);
-            bw.Dispose();
-            var file = bw.ToArray();
+            using var test = new TestData();
+            var bw = test.Writer;
+            var br = test.Reader;
 
-            var br = new BinaryViewReader(file);
+            //setup
+            bw.WriteIList(data0, LengthPrefix.None);
+            test.ResetPtr();
+
+            //read
             var list = new List<byte>();
 
+            list.Add(br.ReadByte());
+            list.Add(br.ReadByte());
 
-            list.Add(br.ReadByte());
-            list.Add(br.ReadByte());
             br.ReadRemainderToIList(list, 2);
-            br.Dispose();
 
-            if (!TUtils.IsIListEqual(data0, list))
-            {
-                TUtils.WriteFail($"FAIL data: {TUtils.IListToString(list)}, expected: {TUtils.IListToString(data0)}");
+            if (TUtils.AssertIListIsEqual(data0, list))
                 return TestResult.Failure;
-            }
+
+
+            TUtils.WriteSucces($"OK");
+            return TestResult.Success;
+        });
+
+        TUtils.RunTest("Read Remainder Mod", () =>
+        {
+            using var test = new TestData();
+            var bw = test.Writer;
+            var br = test.Reader;
+
+            //setup
+            bw.WriteByte(172);
+            bw.WriteUInt16(5303);
+            bw.WriteUInt16(12925);
+            bw.WriteByte(211);
+            test.ResetPtr();
+
+            //read
+            var rdata1 = new List<ushort>();
+            byte rdata0 = br.ReadByte();
+            br.ReadRemainderToIList(rdata1, 2);
+            byte rdata2 = br.ReadByte();
+
+            if (TUtils.AssertValueIsEqual(rdata0, 172))
+                return TestResult.Failure;
+
+            if (TUtils.AssertIListIsEqual(rdata1, new ushort[] { 5303, 12925 }))
+                return TestResult.Failure;
+
+            if (TUtils.AssertValueIsEqual(rdata2, 211))
+                return TestResult.Failure;
 
             TUtils.WriteSucces($"OK");
             return TestResult.Success;

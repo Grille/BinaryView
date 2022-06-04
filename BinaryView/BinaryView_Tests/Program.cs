@@ -16,6 +16,7 @@ class Program
         Section.IList();
         Section.Serializble();
         Section.Compresion();
+        Section.View();
         Section.Map();
         Section.Speed();
 

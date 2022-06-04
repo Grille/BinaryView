@@ -50,9 +50,8 @@ internal static class Utils
 
         int idxend = size - 1;
         int hsize = size / 2;
-        bool mod = size % 2 == 0;
 
-        int flag = (byteReorder ? 1 : 0) + (bitReorder ? 2 : 0);
+        int flag = *(byte*)&byteReorder + (*(byte*)&bitReorder << 1);
 
         switch (flag)
         {
@@ -67,8 +66,6 @@ internal static class Utils
                     ptr[idx0] = ptr[idx1];
                     ptr[idx1] = val0;
                 }
-
-                ptr[hsize + 1] = ptr[hsize + 1];
 
                 return;
             }
@@ -93,7 +90,10 @@ internal static class Utils
                     ptr[idx1] = BitReverseTable[val0];
                 }
 
-                ptr[hsize + 1] = BitReverseTable[ptr[hsize + 1]];
+                bool rest = size % 2 != 0;
+
+                if (rest)
+                    ptr[hsize] = BitReverseTable[ptr[hsize]];
 
                 return;
             }

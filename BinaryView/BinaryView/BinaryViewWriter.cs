@@ -104,6 +104,10 @@ public class BinaryViewWriter : IDisposable
         this(new StreamStack(new FileStream(path, FileMode.Create, FileAccess.Write), true))
     { }
 
+    public BinaryViewWriter(byte[] bytes):
+        this(new StreamStack(new MemoryStream(bytes), true))
+    { }
+
     /// <summary>Initialize BinaryView with a Stream</summary>
     public BinaryViewWriter(Stream stream, bool closeStream = false) :
         this(new StreamStack(stream, closeStream))
@@ -284,6 +288,18 @@ public class BinaryViewWriter : IDisposable
     }
     #endregion
 
+    public long Seek(long offset, SeekOrigin origin = SeekOrigin.Begin)
+    {
+        return writeStream.Seek(offset, origin);
+    }
+
+    public long Exch(long offset, SeekOrigin origin = SeekOrigin.Begin)
+    {
+        long pos = writeStream.Position;
+        writeStream.Seek(offset, origin);
+        return pos;
+    }
+
     public void Close()
     {
         while (StreamStack.Count > 0)
@@ -308,6 +324,20 @@ public class BinaryViewWriter : IDisposable
     {
         deflateAllMode = true;
         BeginDeflateSection(level, LengthPrefix.None);
+    }
+
+    public void BeginInsert()
+    {
+        StreamStack.Create();
+    }
+
+    public void EndInsert()
+    {
+        var peak = StreamStack.Pop();
+        var stream = peak.Stream;
+        stream.Seek(0, SeekOrigin.Begin);
+        StreamStack.InsertToPeak(stream);
+        peak.Dispose();
     }
 
     public void BeginDeflateSection(CompressionLevel level = CompressionLevel.Optimal, LengthPrefix lengthPrefix = LengthPrefix.Default)

@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace BinaryView_Tests;
-internal class TestData
+internal class TestData : IDisposable
 {
     public Stream Stream;
     public BinaryView View;
@@ -20,16 +20,15 @@ internal class TestData
     public TestData()
     {
         Stream = new MemoryStream();
-        //View = new BinaryView(Stream);
-        Writer = new BinaryViewWriter(Stream);
-        Reader = new BinaryViewReader(Stream);
+        View = new BinaryView(Stream);
+        Writer = View.Writer;
+        Reader = View.Reader;
     }
 
-    public void Destroy()
+    public void Setup<T>(IList<T> data) where T : unmanaged 
     {
-        Writer.Dispose();
-        Reader.Dispose();
-        Stream.Dispose();
+        Writer.WriteIList(data, LengthPrefix.None);
+        ResetPtr();
     }
 
     public int PopPtr()
@@ -43,4 +42,32 @@ internal class TestData
     {
         Stream.Position = 0;
     }
+
+    #region IDisposable Support
+    private bool disposedValue = false; // To detect redundant calls
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposedValue)
+        {
+            View.Dispose();
+            Writer.Dispose();
+            Reader.Dispose();
+            Stream.Dispose();
+
+            disposedValue = true;
+        }
+    }
+
+    ~TestData()
+    {
+        Dispose(false);
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+    #endregion
 }

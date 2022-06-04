@@ -15,6 +15,8 @@ public class StreamStack : Stack<StreamStackEntry>, IDisposable
         Push(entry);
     }
 
+    public StreamStackEntry Peak { private set; get; }
+
     /// <summary>
     /// Creates and push new MemoryStream
     /// </summary>
@@ -35,6 +37,7 @@ public class StreamStack : Stack<StreamStackEntry>, IDisposable
     public new void Push(StreamStackEntry entry)
     {
         base.Push(entry);
+        Peak = entry;
         StackChanged?.Invoke(this, entry);
     }
 
@@ -43,18 +46,35 @@ public class StreamStack : Stack<StreamStackEntry>, IDisposable
         var entry = base.Pop();
         if (Count > 0)
         {
-            StackChanged?.Invoke(this, Peek());
+            Peak = Peek();
+            StackChanged?.Invoke(this, Peak);
         }
         return entry;
     }
 
     public void CopyToPeak(Stream dataStream, bool keepPosition = false)
     {
-        var peakStream = Peek().Stream;
+        var peakStream = Peak.Stream;
         long pos = peakStream.Position;
         dataStream.CopyTo(peakStream);
         if (keepPosition)
             peakStream.Position = pos;
+    }
+
+    public void InsertToPeak(Stream dataStream)
+    {
+        var dstStream = Peak.Stream;
+
+        int pos = (int)dstStream.Position;
+        var buffer = new MemoryStream();
+
+        dstStream.CopyTo(buffer);
+
+        dstStream.Position = pos;
+        dataStream.CopyTo(dstStream);
+
+        buffer.Position = 0;
+        buffer.CopyTo(dstStream);
     }
 
     /// <summary>
