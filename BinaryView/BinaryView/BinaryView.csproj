@@ -1,42 +1,44 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFrameworks>netstandard2.1;net45</TargetFrameworks>
-    <LangVersion>10</LangVersion>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageProjectUrl>https://github.com/Grille/BinaryView</PackageProjectUrl>
-    <Authors>Paul Hirch</Authors>
-    <Company>-</Company>
-    <Description>Class to easily write and read binary data from streams</Description>
-    <PackageLicenseExpression></PackageLicenseExpression>
-    <FileVersion>1.0</FileVersion>
-    <AssemblyVersion>2.1</AssemblyVersion>
-    <PackageLicenseFile>LICENSE</PackageLicenseFile>
-    <PackageId>GGL.BinaryView</PackageId>
-    <SignAssembly>false</SignAssembly>
-    <Version>2.1</Version>
-    <RepositoryUrl>https://github.com/Grille/BinaryView</RepositoryUrl>
-    <PackageTags />
-    <EnableNETAnalyzers>False</EnableNETAnalyzers>
-    <EnforceCodeStyleInBuild>False</EnforceCodeStyleInBuild>
-  </PropertyGroup>
+    <PropertyGroup>
+        <TargetFrameworks>netstandard2.1;net45</TargetFrameworks>
+        <LangVersion>10</LangVersion>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <Authors>Paul Hirch</Authors>
+        <Description>Class to easily write and read binary data from streams</Description>
+        <PackageLicenseExpression></PackageLicenseExpression>
+        <FileVersion>1.0</FileVersion>
+        <AssemblyVersion>2.2</AssemblyVersion>
+        <PackageLicenseFile>LICENSE</PackageLicenseFile>
+        <PackageId>GGL.BinaryView</PackageId>
+        <SignAssembly>false</SignAssembly>
+        <Version>2.2</Version>
+        <RepositoryUrl>https://github.com/Grille/BinaryView</RepositoryUrl>
+        <PackageTags />
+        <EnableNETAnalyzers>False</EnableNETAnalyzers>
+        <EnforceCodeStyleInBuild>False</EnforceCodeStyleInBuild>
+        <Title>BinaryView</Title>
+        <Owners>Grille</Owners>
+        <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+        <Copyright>Copyright (c) 2022 Paul Hirch</Copyright>
+    </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <DocumentationFile></DocumentationFile>
-    <OutputPath>bin\</OutputPath>
-  </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+        <DocumentationFile></DocumentationFile>
+        <OutputPath>bin\</OutputPath>
+    </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <OutputPath>bin\</OutputPath>
-    <DocumentationFile>bin\BinaryView.xml</DocumentationFile>
-  </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+        <OutputPath>bin\</OutputPath>
+        <DocumentationFile>bin\BinaryView.xml</DocumentationFile>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <None Include="..\..\LICENSE">
-      <Pack>True</Pack>
-      <PackagePath></PackagePath>
-    </None>
-  </ItemGroup>
+    <ItemGroup>
+        <None Include="..\..\LICENSE">
+            <Pack>True</Pack>
+            <PackagePath></PackagePath>
+        </None>
+    </ItemGroup>
 
 </Project>
