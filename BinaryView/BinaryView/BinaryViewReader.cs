@@ -251,18 +251,10 @@ public class BinaryViewReader : StreamStackUser
     }
 
     /// <summary>Reads a bool from the stream and increases the position by one byte</summary>
-    public bool ReadBoolean()
-    {
-        PeakStream.Read(readBuffer, 0, sizeof(bool));
-        return BitConverter.ToBoolean(readBuffer, 0);
-    }
+    public unsafe bool ReadBoolean() => Read<bool>();
 
     /// <summary>Reads a char from the stream and increases the position by two bytes</summary>
-    public char ReadChar()
-    {
-        PeakStream.Read(readBuffer, 0, sizeof(char));
-        return BitConverter.ToChar(readBuffer, 0);
-    }
+    public unsafe char ReadChar() => Read<char>();
 
     /// <summary>Reads a byte from the stream and increases the position by one byte</summary>
     public unsafe byte ReadByte() => Read<byte>();

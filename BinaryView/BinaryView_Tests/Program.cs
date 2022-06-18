@@ -1,10 +1,11 @@
 ﻿using System;
+using BenchmarkDotNet.Running;
 
 namespace BinaryView_Tests;
 
 class Program
 {
-    static void Main(string[] args)
+    static unsafe void Main(string[] args)
     {
         TUtils.CatchExeptions = false;
 
@@ -19,9 +20,11 @@ class Program
         Section.Compresion();
         Section.View();
         Section.Map();
-        Section.Speed();
 
         TUtils.WriteResults();
+
+        Console.WriteLine();
+        BenchmarkRunner.Run<Benchmarks>();
     }
 }
 

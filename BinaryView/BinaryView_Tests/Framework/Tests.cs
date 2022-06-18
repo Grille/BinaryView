@@ -5,6 +5,7 @@ using System.Runtime.Serialization;
 using System.Collections.Generic;
 using GGL.IO;
 using System.Diagnostics;
+using System.Threading;
 
 namespace BinaryView_Tests;
 
@@ -341,6 +342,12 @@ static class Tests
             var watch = new Stopwatch();
 
             setup();
+
+            for (int i = 0; i < 10_000_000; i++)
+            {
+                bench();
+            }
+            Thread.Sleep(500);
 
             watch.Start();
             for (int i = 0; i < 10_000_000; i++)

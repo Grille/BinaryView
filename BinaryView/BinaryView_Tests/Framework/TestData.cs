@@ -17,12 +17,17 @@ internal class TestData : IDisposable
         get => (int)Stream.Position;
     }
 
-    public TestData()
+    public TestData(int size = 0)
     {
         Stream = new MemoryStream();
         View = new BinaryView(Stream);
         Writer = View.Writer;
         Reader = View.Reader;
+
+        for (int i = 0; i < size; i++)
+            Stream.WriteByte((byte)i);
+
+        Stream.Position = 0;
     }
 
     public void Setup<T>(IList<T> data) where T : unmanaged 

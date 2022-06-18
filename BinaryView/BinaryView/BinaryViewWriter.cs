@@ -113,19 +113,17 @@ public class BinaryViewWriter : StreamStackUser
     /// <param name="obj">Struct to write</param>
     public unsafe void Write<T>(T obj) where T : unmanaged
     {
-        int size = sizeof(T);
-        var ptr = (byte*)&obj;
-        WriteFromPtr(ptr, size);
+        WriteFromPtr(&obj, sizeof(T));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public unsafe void WriteFromPtr(byte* ptr, int size)
+    public unsafe void WriteFromPtr(void* ptr, int size)
     {
         switch (size)
         {
             case 1:
             {
-                byte value = *(ptr);
+                byte value = *(byte*)ptr;
                 if (needBitReorder)
                     value = EndianUtils.BitReverseTable[value];
 
@@ -138,7 +136,7 @@ public class BinaryViewWriter : StreamStackUser
                     EndianUtils.ReverseObjBits(ptr, size, needByteReorder, needBitReorder);
 
                 for (int i = 0; i < size; i++)
-                    writeBuffer[i] = *(ptr + i);
+                    writeBuffer[i] = *((byte*)ptr + i);
 
                 PeakStream.Write(writeBuffer, 0, size);
                 return;
@@ -216,7 +214,7 @@ public class BinaryViewWriter : StreamStackUser
     public unsafe void WriteSingle(float input) => Write(input);
 
     /// <summary>Writes a double to the stream and increases the position by eight byte</summary>
-    public unsafe void WriteDouble(double input) => Write(input);
+    public unsafe void WriteDouble(double input) => WriteFromPtr(&input, sizeof(double));
 
     /// <summary>Writes a decimal to the stream and increases the position by sixteen bytes</summary>
     public unsafe void WriteDecimal(decimal input) => Write(input);
