@@ -6,31 +6,29 @@ using System.Runtime.InteropServices;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Runtime.CompilerServices;
 
 namespace GGL.IO;
 
-public class BinaryViewWriter : IDisposable
+public class BinaryViewWriter : StreamStackUser
 {
     record struct DflateSectionInfo(CompressionLevel Level, LengthPrefix LengthPrefix);
 
-    private byte[] writeBuffer = new byte[Utils.DefaultBufferSize];
-    private Stream writeStream;
+    private byte[] writeBuffer = new byte[EndianUtils.DefaultBufferSize];
 
     private bool deflateAllMode = false;
 
-    private int _bufferSize = Utils.DefaultBufferSize;
+    private int _bufferSize = EndianUtils.DefaultBufferSize;
     private LengthPrefix _lengthPrefix = LengthPrefix.UInt32;
-    private CharSizePrefix _charSizePrefix = CharSizePrefix.Char;
+    private CharSize _charSizePrefix = CharSize.Char;
     private Endianness _bitOrder = Endianness.Default;
     private Endianness _byteOrder = Endianness.Default;
     private bool needBitReorder = false;
     private bool needByteReorder = false;
     private bool needReorder = false;
 
-    private BinaryFormatter formatter = new BinaryFormatter();
+    public IFormatter Formatter = new BinaryFormatter();
 
-
-    public readonly StreamStack StreamStack;
     public Endianness BitOrder
     {
         get => _bitOrder;
@@ -71,27 +69,18 @@ public class BinaryViewWriter : IDisposable
         }
     }
 
-    public CharSizePrefix DefaultCharSizePrefix
+    public CharSize DefaultCharSize
     {
         get => _charSizePrefix;
         set
         {
-            if (value == CharSizePrefix.Default)
-                throw new ArgumentException("DefaultCharSizePrefix can't be set to Default!");
+            if (value == CharSize.Default)
+                throw new ArgumentException("DefaultCharSize can't be set to Default!");
             _charSizePrefix = value;
         }
     }
 
-    public long Position
-    {
-        get => writeStream.Position;
-        set => writeStream.Position = value;
-    }
-    public long Length
-    {
-        get => writeStream.Length;
-        set => writeStream.SetLength(value);
-    }
+
 
 
     /// <summary>Initialize BinaryView with a empty MemoryStream</summary>
@@ -113,15 +102,9 @@ public class BinaryViewWriter : IDisposable
         this(new StreamStack(stream, closeStream))
     { }
 
-    public BinaryViewWriter(StreamStack stack)
-    {
-        StreamStack = stack;
-        StreamStack.StackChanged += (object sender, StreamStackEntry e) =>
-        {
-            writeStream = e.Stream;
-        };
-        writeStream = StreamStack.Peek().Stream;
-    }
+    public BinaryViewWriter(StreamStack stack) : 
+        base(stack) 
+    { }
 
     #region write
 
@@ -130,31 +113,43 @@ public class BinaryViewWriter : IDisposable
     /// <param name="obj">Struct to write</param>
     public unsafe void Write<T>(T obj) where T : unmanaged
     {
-
         int size = sizeof(T);
         var ptr = (byte*)&obj;
+        WriteFromPtr(ptr, size);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public unsafe void WriteFromPtr(byte* ptr, int size)
+    {
         switch (size)
         {
             case 1:
             {
+                byte value = *(ptr);
                 if (needBitReorder)
-                    *ptr = Utils.BitReverseTable[*ptr];
+                    value = EndianUtils.BitReverseTable[value];
 
-                writeStream.WriteByte(*ptr);
+                PeakStream.WriteByte(value);
                 return;
             }
             default:
             {
                 if (needReorder)
-                    Utils.ReverseObjBits(&obj, needByteReorder, needBitReorder);
+                    EndianUtils.ReverseObjBits(ptr, size, needByteReorder, needBitReorder);
 
                 for (int i = 0; i < size; i++)
                     writeBuffer[i] = *(ptr + i);
 
-                writeStream.Write(writeBuffer, 0, size);
+                PeakStream.Write(writeBuffer, 0, size);
                 return;
             }
         }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void WriteIView<T>(T obj) where T : IViewWritable
+    {
+        obj.WriteToView(this);
     }
 
     /// <summary>Writes any object to the stream and increases the position by the size of the struct</summary>
@@ -163,7 +158,7 @@ public class BinaryViewWriter : IDisposable
     /// <remarks>WARNING Serialize can be very inefficient, use Write() instead when possible!</remarks>
     public void Serialize<T>(T obj)
     {
-        formatter.Serialize(writeStream, obj);
+        Formatter.Serialize(PeakStream, obj);
     }
 
     /// <summary>Writes a array of unmanaged structs into the stream and increases the position by the size of the array elements, add prefix for length</summary>
@@ -227,18 +222,23 @@ public class BinaryViewWriter : IDisposable
     public unsafe void WriteDecimal(decimal input) => Write(input);
 
     /// <summary>Writes a string as char array to the stream</summary>
-    public void WriteString(string input, LengthPrefix lengthPrefix = LengthPrefix.Default, CharSizePrefix charSizePrefix = CharSizePrefix.Default)
+    public void WriteString(string input, LengthPrefix lengthPrefix = LengthPrefix.Default, CharSize charSize = CharSize.Default)
+    {
+        WriteString(input, input.Length, lengthPrefix, charSize);
+    }
+
+    public void WriteString(string input, long length, LengthPrefix lengthPrefix = LengthPrefix.Default, CharSize charSize = CharSize.Default)
     {
         writeLengthPrefix(lengthPrefix, input.Length);
 
-        if (charSizePrefix == CharSizePrefix.Default)
-            charSizePrefix = DefaultCharSizePrefix;
+        if (charSize == CharSize.Default)
+            charSize = DefaultCharSize;
 
-        if (charSizePrefix == CharSizePrefix.Char)
-            for (int i = 0; i < input.Length; i++)
+        if (charSize == CharSize.Char)
+            for (int i = 0; i < length; i++)
                 WriteChar((char)input[i]);
         else
-            for (int i = 0; i < input.Length; i++)
+            for (int i = 0; i < length; i++)
                 WriteByte((byte)input[i]);
     }
 
@@ -246,7 +246,7 @@ public class BinaryViewWriter : IDisposable
     public void WriteStringArray(string[] input)
     {
         writeLengthPrefix(LengthPrefix.UInt32, input.Length);
-        for (int i = 0; i < input.Length; i++) WriteString(input[i], LengthPrefix.UInt32, CharSizePrefix.Char);
+        for (int i = 0; i < input.Length; i++) WriteString(input[i], LengthPrefix.UInt32, CharSize.Char);
     }
 
     internal void writeLengthPrefix(LengthPrefix lengthPrefix, long length)
@@ -288,35 +288,17 @@ public class BinaryViewWriter : IDisposable
     }
     #endregion
 
-    public long Seek(long offset, SeekOrigin origin = SeekOrigin.Begin)
-    {
-        return writeStream.Seek(offset, origin);
-    }
-
-    public long Exch(long offset, SeekOrigin origin = SeekOrigin.Begin)
-    {
-        long pos = writeStream.Position;
-        writeStream.Seek(offset, origin);
-        return pos;
-    }
-
-    public void Close()
-    {
-        while (StreamStack.Count > 0)
-            StreamStack.Pop();
-    }
-
     /// <summary>Save data as binary file to the specified path</summary>
     public void Save(string path)
     {
         var fs = File.Open(path, FileMode.Create, FileAccess.Write);
-        writeStream.CopyTo(fs);
+        PeakStream.CopyTo(fs);
         fs.Dispose();
     }
 
     public byte[] ToArray()
     {
-        return ((MemoryStream)writeStream).ToArray();
+        return ((MemoryStream)PeakStream).ToArray();
     }
 
     /// <summary>Compress all data with DeflateStream</summary>
@@ -364,30 +346,17 @@ public class BinaryViewWriter : IDisposable
     }
 
     #region IDisposable Support
-    private bool disposedValue = false; // To detect redundant calls
-
-    protected virtual void Dispose(bool disposing)
+    protected override void Dispose(bool disposing)
     {
-        if (!disposedValue)
+        if (!DisposedValue)
         {
             if (deflateAllMode)
                 EndDeflateSection();
 
             StreamStack.Dispose();
 
-            disposedValue = true;
+            DisposedValue = true;
         }
-    }
-
-    ~BinaryViewWriter()
-    {
-        Dispose(false);
-    }
-
-    public void Dispose()
-    {
-        Dispose(true);
-        GC.SuppressFinalize(this);
     }
     #endregion
 

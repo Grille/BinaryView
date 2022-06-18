@@ -14,6 +14,7 @@ class Program
         Section.Strings();
         Section.Arrays();
         Section.IList();
+        Section.IViewObject();
         Section.Serializble();
         Section.Compresion();
         Section.View();

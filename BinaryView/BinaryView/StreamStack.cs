@@ -6,7 +6,7 @@ using System.IO;
 namespace GGL.IO;
 public class StreamStack : Stack<StreamStackEntry>, IDisposable
 {
-    public event EventHandler<StreamStackEntry> StackChanged;
+    public event EventHandler<StreamStackEntry> PeakChanged;
 
     public StreamStack(Stream stream, bool closable) : this(new StreamStackEntry(stream, closable)) { }
 
@@ -38,7 +38,7 @@ public class StreamStack : Stack<StreamStackEntry>, IDisposable
     {
         base.Push(entry);
         Peak = entry;
-        StackChanged?.Invoke(this, entry);
+        PeakChanged?.Invoke(this, entry);
     }
 
     public new StreamStackEntry Pop()
@@ -47,7 +47,7 @@ public class StreamStack : Stack<StreamStackEntry>, IDisposable
         if (Count > 0)
         {
             Peak = Peek();
-            StackChanged?.Invoke(this, Peak);
+            PeakChanged?.Invoke(this, Peak);
         }
         return entry;
     }

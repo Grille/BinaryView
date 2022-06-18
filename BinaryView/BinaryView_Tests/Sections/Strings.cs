@@ -6,9 +6,9 @@ partial class Section
     {
         TUtils.WriteTitle("test string");
 
-        Tests.WriteReadString("TestString123", LengthPrefix.Default, CharSizePrefix.Default);
-        Tests.WriteReadString("TestString123", LengthPrefix.Byte, CharSizePrefix.Byte);
-        Tests.WriteReadString("TestString123", LengthPrefix.UInt32, CharSizePrefix.Char);
+        Tests.WriteReadString("TestString123", LengthPrefix.Default, CharSize.Default);
+        Tests.WriteReadString("TestString123", LengthPrefix.Byte, CharSize.Byte);
+        Tests.WriteReadString("TestString123", LengthPrefix.UInt32, CharSize.Char);
         Tests.WriteReadString("Ä'*Ü-.,><%§ÃoÜ╝ô○╝+");
     }
 }

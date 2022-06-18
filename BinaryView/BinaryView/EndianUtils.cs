@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 
 namespace GGL.IO;
-internal static class Utils
+internal static class EndianUtils
 {
     public const int DefaultBufferSize = 256;
 
@@ -43,9 +43,8 @@ internal static class Utils
         0x1f, 0x9f, 0x5f, 0xdf, 0x3f, 0xbf, 0x7f, 0xff
     };
 
-    public static unsafe void ReverseObjBits<T>(T* obj, bool byteReorder, bool bitReorder) where T : unmanaged
+    public static unsafe void ReverseObjBits(void* obj, int size, bool byteReorder, bool bitReorder)
     {
-        int size = sizeof(T);
         byte* ptr = (byte*)obj;
 
         int idxend = size - 1;

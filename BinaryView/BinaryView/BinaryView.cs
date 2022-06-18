@@ -4,9 +4,8 @@ using System.Text;
 using System.IO;
 
 namespace GGL.IO;
-public class BinaryView : IDisposable
+public class BinaryView : StreamStackUser
 {
-    public readonly StreamStack StreamStack;
 
     public BinaryViewWriter Writer;
     public BinaryViewReader Reader;
@@ -28,23 +27,10 @@ public class BinaryView : IDisposable
     {
         set => Writer.DefaultLengthPrefix = Reader.DefaultLengthPrefix = value;
     }
-    public CharSizePrefix DefaultCharSizePrefix
+    public CharSize DefaultCharSize
     {
-        set => Writer.DefaultCharSizePrefix = Reader.DefaultCharSizePrefix = value;
+        set => Writer.DefaultCharSize = Reader.DefaultCharSize = value;
     }
-
-
-    public long Position
-    {
-        get => StreamStack.Peak.Stream.Position;
-        set => StreamStack.Peak.Stream.Position = value;
-    }
-    public long Length
-    {
-        get => StreamStack.Peak.Stream.Length;
-        set => StreamStack.Peak.Stream.SetLength(value);
-    }
-
 
     public BinaryView() :
         this(new MemoryStream())
@@ -63,51 +49,24 @@ public class BinaryView : IDisposable
 
 
     /// <summary>Initialize BinaryView with a Stream</summary>
-    public BinaryView(Stream stream, bool closeStream = false)
+    public BinaryView(Stream stream, bool closeStream = false) : base(new StreamStack(stream, closeStream))
     {
-        StreamStack = new StreamStack(stream, closeStream);
         Writer = new BinaryViewWriter(StreamStack);
         Reader = new BinaryViewReader(StreamStack);
     }
 
 
-    public long Seek(long offset, SeekOrigin origin = SeekOrigin.Begin)
-    {
-        return StreamStack.Peak.Stream.Seek(offset, origin);
-    }
-
-    public long Exch(long offset, SeekOrigin origin = SeekOrigin.Begin)
-    {
-        long pos = StreamStack.Peak.Stream.Position;
-        StreamStack.Peak.Stream.Seek(offset, origin);
-        return pos;
-    }
-
-
     #region IDisposable Support
-    private bool disposedValue = false; // To detect redundant calls
-
-    protected virtual void Dispose(bool disposing)
+    protected override void Dispose(bool disposing)
     {
-        if (!disposedValue)
+        if (!DisposedValue)
         {
             Writer.Dispose();
             Reader.Dispose();
             StreamStack.Dispose();
 
-            disposedValue = true;
+            DisposedValue = true;
         }
-    }
-
-    ~BinaryView()
-    {
-        Dispose(false);
-    }
-
-    public void Dispose()
-    {
-        Dispose(true);
-        GC.SuppressFinalize(this);
     }
     #endregion
 }

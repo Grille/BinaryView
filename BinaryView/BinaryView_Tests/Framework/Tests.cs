@@ -50,7 +50,7 @@ static class Tests
         data.Dispose();
     }
 
-    public static void WriteReadString(string str, LengthPrefix lengthPrefix = LengthPrefix.Default, CharSizePrefix charSizePrefix = CharSizePrefix.Default)
+    public static void WriteReadString(string str, LengthPrefix lengthPrefix = LengthPrefix.Default, CharSize charSizePrefix = CharSize.Default)
     {
         var data = new TestData();
         var bw = data.Writer;
@@ -332,6 +332,26 @@ static class Tests
             });
             size *= 2;
         }
+    }
+
+    public static void Benchmark(string msg, Action setup, Action bench)
+    {
+        TUtils.RunTest($"load", () =>
+        {
+            var watch = new Stopwatch();
+
+            setup();
+
+            watch.Start();
+            for (int i = 0; i < 10_000_000; i++)
+            {
+                bench();
+            }
+            watch.Stop();
+
+            TUtils.WriteSucces($"OK {msg} {watch.Elapsed.TotalMilliseconds}ms");
+            return TestResult.Success;
+        });
     }
 }
 

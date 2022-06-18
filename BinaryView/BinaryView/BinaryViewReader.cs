@@ -5,29 +5,26 @@ using System.Runtime.InteropServices;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
-using System;
 using System.Runtime.CompilerServices;
 
 namespace GGL.IO;
 
-public class BinaryViewReader : IDisposable
+public class BinaryViewReader : StreamStackUser
 {
 
-    private byte[] readBuffer = new byte[Utils.DefaultBufferSize];
-    private Stream readStream;
+    private byte[] readBuffer = new byte[EndianUtils.DefaultBufferSize];
 
-    private BinaryFormatter formatter = new BinaryFormatter();
+    public IFormatter Formatter = new BinaryFormatter();
 
-    private int _bufferSize = Utils.DefaultBufferSize;
+    private int _bufferSize = EndianUtils.DefaultBufferSize;
     private LengthPrefix _lengthPrefix = LengthPrefix.UInt32;
-    private CharSizePrefix _charSizePrefix = CharSizePrefix.Char;
+    private CharSize _charSizePrefix = CharSize.Char;
     private Endianness _bitOrder = Endianness.Default;
     private Endianness _byteOrder = Endianness.Default;
     private bool needBitReorder = false;
     private bool needByteReorder = false;
     private bool needReorder = false;
 
-    public readonly StreamStack StreamStack;
     public Endianness BitOrder
     {
         get => _bitOrder;
@@ -52,7 +49,8 @@ public class BinaryViewReader : IDisposable
     public int BufferSize
     {
         get => _bufferSize;
-        set {
+        set
+        {
             _bufferSize = value;
             readBuffer = new byte[_bufferSize];
         }
@@ -69,45 +67,33 @@ public class BinaryViewReader : IDisposable
         }
     }
 
-    public CharSizePrefix DefaultCharSizePrefix
+    public CharSize DefaultCharSize
     {
         get => _charSizePrefix;
         set
         {
-            if (value == CharSizePrefix.Default)
-                throw new ArgumentException("DefaultCharSizePrefix can't be set to Default!");
+            if (value == CharSize.Default)
+                throw new ArgumentException("DefaultCharSize can't be set to Default!");
             _charSizePrefix = value;
         }
     }
 
-    public long Position
-    {
-        get => readStream.Position;
-        set => readStream.Position = value;
-    }
-
-    public long Length
-    {
-        get => readStream.Length;
-        set => readStream.SetLength(value);
-    }
-
 
     /// <summary>Initialize BinaryView with a empty MemoryStream</summary>
-    public BinaryViewReader() : 
-        this(new StreamStack(new MemoryStream(),true)) 
+    public BinaryViewReader() :
+        this(new StreamStack(new MemoryStream(), true))
     { }
 
     /// <summary>Initialize BinaryView with a FileStream</summary>
     /// <param name="path">File path</param>
-    public BinaryViewReader(string path) : 
-        this(new StreamStack(new FileStream(path, FileMode.Open, FileAccess.Read), true)) 
+    public BinaryViewReader(string path) :
+        this(new StreamStack(new FileStream(path, FileMode.Open, FileAccess.Read), true))
     { }
 
     /// <summary>Initialize BinaryView with a MemoryStream filled with bytes from array</summary>
     /// <param name="bytes">Base array</param>
-    public BinaryViewReader(byte[] bytes) : 
-        this(new StreamStack(new MemoryStream(bytes), true)) 
+    public BinaryViewReader(byte[] bytes) :
+        this(new StreamStack(new MemoryStream(bytes), true))
     { }
 
     /// <summary>Initialize BinaryView with a Stream</summary>
@@ -115,46 +101,40 @@ public class BinaryViewReader : IDisposable
         this(new StreamStack(stream, closeStream))
     { }
 
-    public BinaryViewReader(StreamStack stack)
-    {
-        StreamStack = stack;
-        StreamStack.StackChanged += (object sender, StreamStackEntry e) =>
-        {
-            readStream = e.Stream;
-        };
-        readStream = StreamStack.Peek().Stream;
-    }
+    public BinaryViewReader(StreamStack stack) :
+        base(stack)
+    { }
 
 
     #region read
     /// <summary>Reads a primitive or unmanaged struct from the stream and increases the position by the size of the struct</summary>
     /// <typeparam name="T"></typeparam> Type of unmanaged struct
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public unsafe T Read<T>() where T : unmanaged
     {
         int size = sizeof(T);
-
         switch (size)
         {
             case 1:
             {
-                byte data = (byte)readStream.ReadByte();
+                byte data = (byte)PeakStream.ReadByte();
 
                 if (needBitReorder)
-                    data = Utils.BitReverseTable[data];
+                    data = EndianUtils.BitReverseTable[data];
 
                 var obj = *(T*)&data;
                 return obj;
             }
             default:
             {
-                readStream.Read(readBuffer, 0, size);
+                PeakStream.Read(readBuffer, 0, size);
 
                 fixed (byte* dataPtr = readBuffer)
                 {
                     var obj = *(T*)&dataPtr[0];
 
                     if (needReorder)
-                        Utils.ReverseObjBits(&obj, needByteReorder, needBitReorder);
+                        EndianUtils.ReverseObjBits(&obj, size, needByteReorder, needBitReorder);
 
                     return obj;
                 }
@@ -162,11 +142,55 @@ public class BinaryViewReader : IDisposable
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public unsafe void ReadToPtr(void* ptr, int size)
+    {
+        switch (size)
+        {
+            case 1:
+            {
+                byte data = (byte)PeakStream.ReadByte();
+
+                if (needBitReorder)
+                    data = EndianUtils.BitReverseTable[data];
+
+                *((byte*)ptr) = data;
+                return;
+            }
+            default:
+            {
+                PeakStream.Read(readBuffer, 0, size);
+
+                fixed (byte* dataPtr = readBuffer)
+                {
+                    for (int i = 0; i < size; i++)
+                        *((byte*)ptr + i) = readBuffer[i];
+
+                    if (needReorder)
+                        EndianUtils.ReverseObjBits(&ptr, size, needByteReorder, needBitReorder);
+
+                    return;
+                }
+            }
+        }
+    }
+
+    public T ReadIView<T>() where T : IViewReadable, new()
+    {
+        return ReadToIView(new T());
+    }
+
+    public T ReadToIView<T>(T obj) where T : IViewReadable
+    {
+        obj.ReadFormView(this);
+        return obj;
+    }
+
     /// <summary>Reads an serialized object from the stream and increases the position by the size of the data</summary>
     /// <typeparam name="T"></typeparam> Type
     public T Deserialize<T>()
     {
-        return (T)formatter.Deserialize(readStream);
+        return (T)Formatter.Deserialize(PeakStream);
     }
 
 
@@ -222,21 +246,21 @@ public class BinaryViewReader : IDisposable
     /// <param name="offset">Offset in dstList</param>
     public unsafe void ReadRemainderToIList<T>(IList<T> dstList, int offset) where T : unmanaged
     {
-        long count = (readStream.Length - readStream.Position) / sizeof(T);
+        long count = (PeakStream.Length - PeakStream.Position) / sizeof(T);
         ReadToIList(dstList, offset, count);
     }
 
     /// <summary>Reads a bool from the stream and increases the position by one byte</summary>
     public bool ReadBoolean()
     {
-        readStream.Read(readBuffer, 0, sizeof(bool));
+        PeakStream.Read(readBuffer, 0, sizeof(bool));
         return BitConverter.ToBoolean(readBuffer, 0);
     }
 
     /// <summary>Reads a char from the stream and increases the position by two bytes</summary>
     public char ReadChar()
     {
-        readStream.Read(readBuffer, 0, sizeof(char));
+        PeakStream.Read(readBuffer, 0, sizeof(char));
         return BitConverter.ToChar(readBuffer, 0);
     }
 
@@ -275,14 +299,19 @@ public class BinaryViewReader : IDisposable
 
 
     /// <summary>Reads a string from the stream</summary>
-    public string ReadString(LengthPrefix lengthPrefix = LengthPrefix.Default, CharSizePrefix charSizePrefix = CharSizePrefix.Default)
+    public string ReadString(LengthPrefix lengthPrefix = LengthPrefix.Default, CharSize charSize = CharSize.Default)
     {
         long length = readLengthPrefix(lengthPrefix);
-        if (charSizePrefix == CharSizePrefix.Default)
-            charSizePrefix = DefaultCharSizePrefix;
+        if (charSize == CharSize.Default)
+            charSize = DefaultCharSize;
 
+        return ReadString(length, charSize);
+    }
+
+    public string ReadString(long length, CharSize charSize = CharSize.Default)
+    {
         char[] retData = new char[length];
-        if (charSizePrefix == CharSizePrefix.Char)
+        if (charSize == CharSize.Char)
             for (int i = 0; i < retData.Length; i++)
                 retData[i] = (char)ReadChar();
         else
@@ -296,7 +325,7 @@ public class BinaryViewReader : IDisposable
     {
         long length = readLengthPrefix(LengthPrefix.UInt32);
         string[] retData = new string[length];
-        for (int i = 0; i < retData.Length; i++) retData[i] = ReadString(LengthPrefix.UInt32, CharSizePrefix.Char);
+        for (int i = 0; i < retData.Length; i++) retData[i] = ReadString(LengthPrefix.UInt32, CharSize.Char);
         return retData;
     }
 
@@ -329,23 +358,10 @@ public class BinaryViewReader : IDisposable
     #endregion
 
 
-    public long Seek(long offset, SeekOrigin origin = SeekOrigin.Begin)
-    {
-        return readStream.Seek(offset, origin);
-    }
-
-    public long Exch(long offset, SeekOrigin origin = SeekOrigin.Begin)
-    {
-        long pos = readStream.Position;
-        readStream.Seek(offset, origin);
-        return pos;
-    }
-
-
     /// <summary>Decompress all data with DeflateStream, must be executet before any read operation</summary>
     public void DecompressAll()
     {
-        BeginDeflateSection(readStream.Length);
+        BeginDeflateSection(PeakStream.Length);
     }
     /// <summary>Decompress data with DeflateStream, position will reset</summary>
     public void BeginDeflateSection(LengthPrefix lengthPrefix = LengthPrefix.Default)
@@ -372,27 +388,14 @@ public class BinaryViewReader : IDisposable
     }
 
     #region IDisposable Support
-    private bool disposedValue = false; // To detect redundant calls
-
-    protected virtual void Dispose(bool disposing)
+    protected override void Dispose(bool disposing)
     {
-        if (!disposedValue)
+        if (!DisposedValue)
         {
             StreamStack.Dispose();
 
-            disposedValue = true;
+            DisposedValue = true;
         }
-    }
-
-    ~BinaryViewReader()
-    {
-        Dispose(false);
-    }
-
-    public void Dispose()
-    {
-        Dispose(true);
-        GC.SuppressFinalize(this);
     }
     #endregion
 

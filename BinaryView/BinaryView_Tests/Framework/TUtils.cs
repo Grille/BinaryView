@@ -37,6 +37,24 @@ internal static class TUtils
         public override bool Equals(object obj) => (uint)this == (uint)(UInt24)obj;
     }
 
+    public class InterfaceImplementation : IViewObject
+    {
+
+        public int A, B;
+
+        public void ReadFormView(BinaryViewReader br)
+        {
+            A = br.Read<int>();
+            B = br.Read<int>();
+        }
+
+        public void WriteToView(BinaryViewWriter bw)
+        {
+            bw.Write(A);
+            bw.Write(B);
+        }
+    }
+
     public static bool CatchExeptions = false;
 
     static int successCount = 0;
@@ -139,7 +157,6 @@ internal static class TUtils
     {
         var sb = new StringBuilder();
         sb.Append($"[{array.Count}]{{");
-        int max = 16;
         int size = Math.Min(array.Count, 16);
         for (int i = 0; i < size; i++)
         {

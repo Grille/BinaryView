@@ -26,7 +26,7 @@ public enum LengthPrefix
     UInt64,
 }
 
-public enum CharSizePrefix
+public enum CharSize
 {
     Default,
     Byte,
