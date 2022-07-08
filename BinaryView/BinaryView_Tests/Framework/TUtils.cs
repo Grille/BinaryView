@@ -42,7 +42,7 @@ internal static class TUtils
 
         public int A, B;
 
-        public void ReadFormView(BinaryViewReader br)
+        public void ReadFromView(BinaryViewReader br)
         {
             A = br.Read<int>();
             B = br.Read<int>();

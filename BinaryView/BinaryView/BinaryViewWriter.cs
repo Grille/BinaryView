@@ -144,6 +144,11 @@ public class BinaryViewWriter : StreamStackUser
         }
     }
 
+    public unsafe void WriteFromPtr(void* ptr, int size, int offset)
+    {
+        WriteFromPtr((byte*)ptr + offset, size);
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void WriteIView<T>(T obj) where T : IViewWritable
     {

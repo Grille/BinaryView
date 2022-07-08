@@ -175,6 +175,11 @@ public class BinaryViewReader : StreamStackUser
         }
     }
 
+    public unsafe void ReadToPtr(void* ptr, int size, int offset)
+    {
+        ReadToPtr((byte*)ptr + offset, size);
+    }
+
     public T ReadIView<T>() where T : IViewReadable, new()
     {
         return ReadToIView(new T());
@@ -182,7 +187,7 @@ public class BinaryViewReader : StreamStackUser
 
     public T ReadToIView<T>(T obj) where T : IViewReadable
     {
-        obj.ReadFormView(this);
+        obj.ReadFromView(this);
         return obj;
     }
 

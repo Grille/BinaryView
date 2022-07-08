@@ -5,5 +5,5 @@ using System.Text;
 namespace GGL.IO;
 public interface IViewReadable
 {
-    public void ReadFormView(BinaryViewReader br);
+    public void ReadFromView(BinaryViewReader br);
 }
