@@ -61,9 +61,12 @@ public class BinaryView : StreamStackUser
     {
         if (!DisposedValue)
         {
-            Writer.Dispose();
-            Reader.Dispose();
-            StreamStack.Dispose();
+            if (disposing)
+            {
+                Writer.Dispose();
+                Reader.Dispose();
+                StreamStack.Dispose();
+            }
 
             DisposedValue = true;
         }

@@ -353,10 +353,13 @@ public class BinaryViewWriter : StreamStackUser
     {
         if (!DisposedValue)
         {
-            if (deflateAllMode)
-                EndDeflateSection();
+            if (disposing)
+            {
+                if (deflateAllMode)
+                    EndDeflateSection();
 
-            StreamStack.Dispose();
+                StreamStack.Dispose();
+            }
 
             DisposedValue = true;
         }

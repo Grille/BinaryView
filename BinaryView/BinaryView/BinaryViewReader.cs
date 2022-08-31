@@ -389,7 +389,10 @@ public class BinaryViewReader : StreamStackUser
     {
         if (!DisposedValue)
         {
-            StreamStack.Dispose();
+            if (disposing)
+            {
+                StreamStack.Dispose();
+            }
 
             DisposedValue = true;
         }

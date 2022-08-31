@@ -101,7 +101,11 @@ public class StreamStack : Stack<StreamStackEntry>, IDisposable
         {
             while (Count > 0)
             {
-                DisposePeak();
+                var stream = Pop();
+                if (stream != null && stream.Closeable && stream.Stream != null)
+                {
+                    stream.Dispose();
+                }
             }
 
             disposedValue = true;
