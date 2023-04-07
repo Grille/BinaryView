@@ -3,58 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using BinaryView_Tests.Framework;
 
 namespace BinaryView_Tests;
 
-internal static class TUtils
+internal static class TestSys
 {
-    public record struct Struct(int A, float B)
-    {
-        public override string ToString() => "{A:" + A + ";B:" + B + "}";
-    }
-
-    public struct UInt24
-    {
-        public byte A;
-        public byte B;
-        public byte C;
-
-        public static unsafe implicit operator UInt24(uint value) => *(UInt24*)&value;
-        public static unsafe implicit operator uint(UInt24 value)
-        {
-            uint dst = 0;
-            byte* srcPtr = (byte*)&value;
-            byte* dstPtr = (byte*)&dst;
-
-            dstPtr[0] = srcPtr[0];
-            dstPtr[1] = srcPtr[1];
-            dstPtr[2] = srcPtr[2];
-
-            return dst;
-        }
-
-        public override string ToString() => ((uint)this).ToString();
-        public override bool Equals(object obj) => (uint)this == (uint)(UInt24)obj;
-    }
-
-    public class InterfaceImplementation : IViewObject
-    {
-
-        public int A, B;
-
-        public void ReadFromView(BinaryViewReader br)
-        {
-            A = br.Read<int>();
-            B = br.Read<int>();
-        }
-
-        public void WriteToView(BinaryViewWriter bw)
-        {
-            bw.Write(A);
-            bw.Write(B);
-        }
-    }
-
     public static bool CatchExeptions = false;
 
     static int successCount = 0;
@@ -79,6 +33,16 @@ internal static class TUtils
         {
             Watch.Start();
             result = test();
+        }
+        catch (TestSucException e)
+        {
+            WriteSucces(e.Message);
+            result = TestResult.Success;
+        }
+        catch (TestFailException e)
+        {
+            WriteFail(e.Message);
+            result = TestResult.Failure;
         }
         catch (Exception e)
         {
@@ -109,6 +73,7 @@ internal static class TUtils
 
     public static void Write(string msg)
     {
+        Console.ForegroundColor = ConsoleColor.Gray;
         Console.Write(msg);
     }
     public static void Write(string msg, ConsoleColor color)
@@ -211,20 +176,39 @@ internal static class TUtils
         return result;
     }
 
-    public static bool AssertValueIsEqual<T>(T value0, T value1, string msg = "")
+    public static void Succes(string msg = null)
     {
-        bool result = !value0.Equals(value1);
-        if (result)
-            WriteFail($"FAIL value: {value0} expected: {value1} {msg}");
-        return result;
+        if (msg == null)
+            msg = "OK";
+
+        throw new TestSucException(msg);
     }
 
-    public static bool AssertIListIsEqual<T>(IList<T> array0, IList<T> array1, string msg = "") where T : unmanaged
+    public static void AssertValueIsNotEqual<T>(T value0, T value1, string msg = "")
     {
-        bool result = !IsIListEqual(array0, array1);
-        if (result)
-            WriteFail($"FAIL data: {IListToString(array0)} expected: {IListToString(array1)} {msg}");
-        return result;
+        if (value0.Equals(value1))
+            throw new TestFailException($"FAIL value: {value0} expected: {value1} {msg}");
+    }
+
+    public static void AssertValueIsEqual<T>(T value0, T value1, string msg = "")
+    {
+        if (!value0.Equals(value1))
+            throw new TestFailException($"FAIL value: {value0} expected: {value1} {msg}");
+    }
+
+    public static void AssertIListIsEqual<T>(IList<T> refarray0, IList<T> dataarray1, string msg = "") where T : unmanaged
+    {
+        if (!IsIListEqual(refarray0, dataarray1))
+            throw new TestFailException($"FAIL expected: {IListToString(refarray0)} data: {IListToString(dataarray1)} {msg}");
+    }
+
+    public static void AssertEndOfStream(Stream stream, bool endExpected = true)
+    {
+        bool end = stream.Position >= stream.Length;
+        if (endExpected && !end)
+            throw new TestFailException($"FAIL stream not at end (len: {stream.Length} pos: {stream.Position})");
+        if (!endExpected && end)
+            throw new TestFailException($"FAIL stream reached end (len: {stream.Length} pos: {stream.Position})");
     }
 }
 

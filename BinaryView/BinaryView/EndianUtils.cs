@@ -5,8 +5,6 @@ using System.Text;
 namespace GGL.IO;
 internal static class EndianUtils
 {
-    public const int DefaultBufferSize = 256;
-
     public static byte[] BitReverseTable =
     {
         0x00, 0x80, 0x40, 0xc0, 0x20, 0xa0, 0x60, 0xe0,
@@ -50,7 +48,7 @@ internal static class EndianUtils
         int idxend = size - 1;
         int hsize = size / 2;
 
-        int flag = *(byte*)&byteReorder + (*(byte*)&bitReorder << 1);
+        int flag = *(byte*)&byteReorder | (*(byte*)&bitReorder << 1);
 
         switch (flag)
         {

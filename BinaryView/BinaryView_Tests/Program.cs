@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Numerics;
+using System.Runtime.InteropServices;
 using BenchmarkDotNet.Running;
 
 namespace BinaryView_Tests;
@@ -7,24 +9,25 @@ class Program
 {
     static unsafe void Main(string[] args)
     {
-        TUtils.CatchExeptions = false;
+        TestSys.CatchExeptions = false;
 
         Section.PrimitiveTypes();
         Section.GenericTypes();
         Section.Endianness();
+        Section.Prefix();
         Section.Strings();
         Section.Arrays();
         Section.IList();
         Section.IViewObject();
         Section.Serializble();
         Section.Compresion();
-        Section.View();
+        Section.Combined();
         Section.Map();
 
-        TUtils.WriteResults();
+        TestSys.WriteResults();
 
         Console.WriteLine();
-        BenchmarkRunner.Run<Benchmarks>();
+        //BenchmarkRunner.Run<Benchmarks>();
     }
 }
 

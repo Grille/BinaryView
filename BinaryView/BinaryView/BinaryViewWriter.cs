@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 using System.IO;
 using System.IO.Compression;
 using SysIOC = System.IO.Compression;
@@ -7,107 +8,36 @@ using System.Collections.Generic;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Runtime.CompilerServices;
+using GGL.IO.Compression;
 
 namespace GGL.IO;
 
 public class BinaryViewWriter : StreamStackUser
 {
-    record struct DflateSectionInfo(CompressionLevel Level, LengthPrefix LengthPrefix);
-
-    private byte[] writeBuffer = new byte[EndianUtils.DefaultBufferSize];
-
-    private bool deflateAllMode = false;
-
-    private int _bufferSize = EndianUtils.DefaultBufferSize;
-    private LengthPrefix _lengthPrefix = LengthPrefix.UInt32;
-    private CharSize _charSizePrefix = CharSize.Char;
-    private Endianness _bitOrder = Endianness.Default;
-    private Endianness _byteOrder = Endianness.Default;
-    private bool needBitReorder = false;
-    private bool needByteReorder = false;
-    private bool needReorder = false;
-
-    public IFormatter Formatter = new BinaryFormatter();
-
-    public Endianness BitOrder
-    {
-        get => _bitOrder;
-        set
-        {
-            _bitOrder = value;
-            needBitReorder = _bitOrder != Endianness.Default;
-            needReorder = _bitOrder != Endianness.Default || _byteOrder != Endianness.Default;
-        }
-    }
-    public Endianness ByteOrder
-    {
-        get => _bitOrder;
-        set
-        {
-            _byteOrder = value;
-            needByteReorder = _byteOrder != Endianness.Default;
-            needReorder = _bitOrder != Endianness.Default || _byteOrder != Endianness.Default;
-        }
-    }
-
-    public int BufferSize
-    {
-        get => _bufferSize;
-        set
-        {
-            _bufferSize = value;
-            writeBuffer = new byte[_bufferSize];
-        }
-    }
-
-    public LengthPrefix DefaultLengthPrefix { 
-        get => _lengthPrefix; 
-        set {
-            if (value == LengthPrefix.Default)
-                throw new ArgumentException("DefaultLengthPrefix can't be set to Default!");
-            _lengthPrefix = value;
-        }
-    }
-
-    public CharSize DefaultCharSize
-    {
-        get => _charSizePrefix;
-        set
-        {
-            if (value == CharSize.Default)
-                throw new ArgumentException("DefaultCharSize can't be set to Default!");
-            _charSizePrefix = value;
-        }
-    }
-
-
-
-
     /// <summary>Initialize BinaryView with a empty MemoryStream</summary>
     public BinaryViewWriter() :
-        this(new StreamStack(new MemoryStream(), true))
+        this(new StreamStack(new MemoryStream(), false))
     { }
     /// <summary>Initialize BinaryView with a FileStream</summary>
     /// <param name="path">File path</param>
     public BinaryViewWriter(string path) :
-        this(new StreamStack(new FileStream(path, FileMode.Create, FileAccess.Write), true))
+        this(new StreamStack(new FileStream(path, FileMode.Create, FileAccess.Write), false))
     { }
 
-    public BinaryViewWriter(byte[] bytes):
-        this(new StreamStack(new MemoryStream(bytes), true))
+    public BinaryViewWriter(byte[] bytes) :
+        this(new StreamStack(new MemoryStream(bytes), false))
     { }
 
     /// <summary>Initialize BinaryView with a Stream</summary>
-    public BinaryViewWriter(Stream stream, bool closeStream = false) :
-        this(new StreamStack(stream, closeStream))
+    public BinaryViewWriter(Stream stream, bool leaveOpen = true) :
+        this(new StreamStack(stream, leaveOpen))
     { }
 
-    public BinaryViewWriter(StreamStack stack) : 
-        base(stack) 
+    public BinaryViewWriter(StreamStack stack) :
+        base(stack)
     { }
 
     #region write
-
     /// <summary>Writes a primitive or unmanaged struct to the stream and increases the position by the size of the struct</summary>
     /// <typeparam name="T"></typeparam> Type of unmanaged struct
     /// <param name="obj">Struct to write</param>
@@ -124,7 +54,7 @@ public class BinaryViewWriter : StreamStackUser
             case 1:
             {
                 byte value = *(byte*)ptr;
-                if (needBitReorder)
+                if (NeedBitReorder)
                     value = EndianUtils.BitReverseTable[value];
 
                 PeakStream.WriteByte(value);
@@ -132,13 +62,14 @@ public class BinaryViewWriter : StreamStackUser
             }
             default:
             {
-                if (needReorder)
-                    EndianUtils.ReverseObjBits(ptr, size, needByteReorder, needBitReorder);
+                AssureBufferSize(size);
+                if (NeedReorder)
+                    EndianUtils.ReverseObjBits(ptr, size, NeedByteReorder, NeedBitReorder);
 
                 for (int i = 0; i < size; i++)
-                    writeBuffer[i] = *((byte*)ptr + i);
+                    Buffer[i] = *((byte*)ptr + i);
 
-                PeakStream.Write(writeBuffer, 0, size);
+                PeakStream.Write(Buffer, 0, size);
                 return;
             }
         }
@@ -161,27 +92,39 @@ public class BinaryViewWriter : StreamStackUser
     /// <remarks>WARNING Serialize can be very inefficient, use Write() instead when possible!</remarks>
     public void Serialize<T>(T obj)
     {
-        Formatter.Serialize(PeakStream, obj);
+        Serialize(obj, DefaultFormatter);
+    }
+
+    public void Serialize<T>(T obj, IFormatter formatter)
+    {
+        formatter.Serialize(PeakStream, obj);
     }
 
     /// <summary>Writes a array of unmanaged structs into the stream and increases the position by the size of the array elements, add prefix for length</summary>
     /// <typeparam name="T"></typeparam> Type of unmanaged struct
     /// <param name="array">Array of unmanaged structs to write</param>
-    public void WriteArray<T>(T[] array, LengthPrefix lengthPrefix = LengthPrefix.Default) where T : unmanaged => WriteIList(array, 0, array.Length, lengthPrefix);
+    public void WriteArray<T>(T[] array, LengthPrefix lengthPrefix = LengthPrefix.Default) where T : unmanaged
+    {
+        WriteLengthPrefix(lengthPrefix, array.Length);
+        for (int i = 0; i < array.Length; i++) Write(array[i]);
+    }
 
     /// <summary>Writes a list of unmanaged structs into the stream and increases the position by the size of the array elements, add prefix for length</summary>
     /// <typeparam name="T"></typeparam> Type of unmanaged struct
     /// <param name="list">Array of unmanaged structs to write</param>
-    public void WriteIList<T>(IList<T> list, LengthPrefix lengthPrefix = LengthPrefix.Default) where T : unmanaged => WriteIList(list, 0, list.Count, lengthPrefix);
+    public void WriteIList<T>(IList<T> list, LengthPrefix lengthPrefix = LengthPrefix.Default) where T : unmanaged
+    {
+        WriteLengthPrefix(lengthPrefix, list.Count);
+        for (int i = 0; i < list.Count; i++) Write(list[i]);
+    }
 
     /// <summary>Writes a array of unmanaged structs into the stream and increases the position by the size of the array elements, add prefix for length</summary>
     /// <typeparam name="T"></typeparam> Type of unmanaged struct
     /// <param name="list">List of unmanaged structs to write</param>
     /// <param name="offset">start offset in the array</param>
     /// <param name="count">number of elements to be written</param>
-    public void WriteIList<T>(IList<T> list, int offset, int count, LengthPrefix lengthPrefix = LengthPrefix.Default) where T : unmanaged
+    public void WriteIList<T>(IList<T> list, int offset, int count) where T : unmanaged
     {
-        writeLengthPrefix(lengthPrefix, count);
         for (int i = 0; i < count; i++) Write(list[i + offset]);
     }
 
@@ -215,51 +158,64 @@ public class BinaryViewWriter : StreamStackUser
     /// <summary>Writes a long to the stream and increases the position by eight bytes</summary>
     public unsafe void WriteInt64(long input) => Write(input);
 
+#if NET5_0_OR_GREATER
+    /// <summary>Writes a float to the stream and increases the position by four bytes</summary>
+    public unsafe void WriteHalf(Half input) => Write(input);
+#endif
+
     /// <summary>Writes a float to the stream and increases the position by four bytes</summary>
     public unsafe void WriteSingle(float input) => Write(input);
 
     /// <summary>Writes a double to the stream and increases the position by eight byte</summary>
-    public unsafe void WriteDouble(double input) => WriteFromPtr(&input, sizeof(double));
+    public unsafe void WriteDouble(double input) => Write(input);
 
     /// <summary>Writes a decimal to the stream and increases the position by sixteen bytes</summary>
     public unsafe void WriteDecimal(decimal input) => Write(input);
 
-    /// <summary>Writes a string as char array to the stream</summary>
-    public void WriteString(string input, LengthPrefix lengthPrefix = LengthPrefix.Default, CharSize charSize = CharSize.Default)
+    /// <summary>Writes a string as byte array with an length prefix.</summary>
+    public void WriteString(in string input, LengthPrefix lengthPrefix = LengthPrefix.Default, Encoding encoding = null)
     {
-        WriteString(input, input.Length, lengthPrefix, charSize);
+        if (encoding == null)
+            encoding = DefaultEncoding;
+
+        var bytes = encoding.GetBytes(input);
+
+        WriteArray(bytes, lengthPrefix);
     }
 
-    public void WriteString(string input, long length, LengthPrefix lengthPrefix = LengthPrefix.Default, CharSize charSize = CharSize.Default)
+    /// <summary>
+    /// Writes an string as byte array and terminates with null.
+    /// </summary>
+    /// <remarks>null-terminated strings are error prone, if possible use WriteString instead.</remarks>
+    /// <param name="input"></param>
+    /// <param name="encoding"></param>
+    public void WriteTerminatedString(in string input, Encoding encoding = null)
     {
-        writeLengthPrefix(lengthPrefix, input.Length);
+        if (encoding == null)
+            encoding = DefaultEncoding;
 
-        if (charSize == CharSize.Default)
-            charSize = DefaultCharSize;
-
-        if (charSize == CharSize.Char)
-            for (int i = 0; i < length; i++)
-                WriteChar((char)input[i]);
-        else
-            for (int i = 0; i < length; i++)
-                WriteByte((byte)input[i]);
+        var bytes = encoding.GetBytes(input);
+        WriteArray(bytes, LengthPrefix.None);
+        WriteByte(0);
     }
 
     /// <summary>Writes a array of strings</summary>
     public void WriteStringArray(string[] input)
     {
-        writeLengthPrefix(LengthPrefix.UInt32, input.Length);
-        for (int i = 0; i < input.Length; i++) WriteString(input[i], LengthPrefix.UInt32, CharSize.Char);
+        WriteLengthPrefix(LengthPrefix.UInt32, input.Length);
+        for (int i = 0; i < input.Length; i++) WriteString(input[i], LengthPrefix.UInt32);
     }
 
-    internal void writeLengthPrefix(LengthPrefix lengthPrefix, long length)
+
+
+    public void WriteLengthPrefix(LengthPrefix lengthPrefix, long length)
     {
         switch (lengthPrefix)
         {
             case LengthPrefix.None:
                 return;
             case LengthPrefix.Default:
-                writeLengthPrefix(DefaultLengthPrefix, length);
+                WriteLengthPrefix(DefaultLengthPrefix, length);
                 return;
             case LengthPrefix.SByte:
                 WriteSByte((sbyte)length);
@@ -285,6 +241,18 @@ public class BinaryViewWriter : StreamStackUser
             case LengthPrefix.UInt64:
                 WriteUInt64((ulong)length);
                 return;
+            case LengthPrefix.Single:
+                WriteSingle(length);
+                return;
+            case LengthPrefix.Double:
+                WriteDouble(length);
+                return;
+            case LengthPrefix.UIntSmart15:
+                WriteIView((UIntSmart15)length);
+                return;
+            case LengthPrefix.UIntSmart62:
+                WriteIView((UIntSmart62)length);
+                return;
             default:
                 throw new ArgumentOutOfRangeException();
         }
@@ -297,18 +265,6 @@ public class BinaryViewWriter : StreamStackUser
         var fs = File.Open(path, FileMode.Create, FileAccess.Write);
         PeakStream.CopyTo(fs);
         fs.Dispose();
-    }
-
-    public byte[] ToArray()
-    {
-        return ((MemoryStream)PeakStream).ToArray();
-    }
-
-    /// <summary>Compress all data with DeflateStream</summary>
-    public void CompressAll(CompressionLevel level = CompressionLevel.Optimal)
-    {
-        deflateAllMode = true;
-        BeginDeflateSection(level, LengthPrefix.None);
     }
 
     public void BeginInsert()
@@ -325,29 +281,6 @@ public class BinaryViewWriter : StreamStackUser
         peak.Dispose();
     }
 
-    public void BeginDeflateSection(CompressionLevel level = CompressionLevel.Optimal, LengthPrefix lengthPrefix = LengthPrefix.Default)
-    {
-        StreamStack.Create(new DflateSectionInfo(level, lengthPrefix));
-    }
-
-    public void EndDeflateSection()
-    {
-        using (var compressedStream = new MemoryStream())
-        {
-            var peakStream = StreamStack.Pop();
-            var args = (DflateSectionInfo)peakStream.Args;
-            using (var compressor = new DeflateStream(compressedStream, (SysIOC.CompressionLevel)args.Level, true))
-            {
-                peakStream.Stream.Seek(0, SeekOrigin.Begin);
-                peakStream.Stream.CopyTo(compressor);
-            }
-            peakStream.Dispose();
-            compressedStream.Seek(0, SeekOrigin.Begin);
-            writeLengthPrefix(args.LengthPrefix, compressedStream.Length);
-            StreamStack.CopyToPeak(compressedStream, false);
-        }
-    }
-
     #region IDisposable Support
     protected override void Dispose(bool disposing)
     {
@@ -355,9 +288,6 @@ public class BinaryViewWriter : StreamStackUser
         {
             if (disposing)
             {
-                if (deflateAllMode)
-                    EndDeflateSection();
-
                 StreamStack.Dispose();
             }
 

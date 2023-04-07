@@ -7,22 +7,32 @@ using System.Threading.Tasks;
 namespace BinaryView_Tests;
 internal class TestData : IDisposable
 {
-    public Stream Stream;
-    public BinaryView View;
-    public BinaryViewWriter Writer;
-    public BinaryViewReader Reader;
+    public readonly Stream Stream;
 
-    public int Ptr
+    public BinaryViewWriter Writer => new BinaryViewWriter(Stream);
+    public BinaryViewReader Reader => new BinaryViewReader(Stream);
+
+    public BinaryView ViewWriter => new BinaryView(Stream, ViewMode.Write);
+    public BinaryView ViewReader => new BinaryView(Stream, ViewMode.Read);
+
+    public int Position
     {
         get => (int)Stream.Position;
+    }
+
+    public TestData(string file)
+    {
+        Stream = new FileStream(file, FileMode.Create, FileAccess.ReadWrite);
+    }
+
+    public TestData(Stream stream)
+    {
+        Stream = stream;
     }
 
     public TestData(int size = 0)
     {
         Stream = new MemoryStream();
-        View = new BinaryView(Stream);
-        Writer = View.Writer;
-        Reader = View.Reader;
 
         for (int i = 0; i < size; i++)
             Stream.WriteByte((byte)i);
@@ -30,20 +40,25 @@ internal class TestData : IDisposable
         Stream.Position = 0;
     }
 
+    public void Seek(long offset, SeekOrigin origin = SeekOrigin.Begin) => Stream.Seek(offset, origin);
+
     public void Setup<T>(IList<T> data) where T : unmanaged 
     {
-        Writer.WriteIList(data, LengthPrefix.None);
-        ResetPtr();
+        using (var bw = new BinaryViewWriter(Stream))
+        {
+            bw.WriteIList(data, LengthPrefix.None);
+        }
+        ResetPos();
     }
 
-    public int PopPtr()
+    public int PopPos()
     {
         int pos = (int)Stream.Position;
-        ResetPtr();
+        ResetPos();
         return pos;
     }
 
-    public void ResetPtr()
+    public void ResetPos()
     {
         Stream.Position = 0;
     }
@@ -55,9 +70,6 @@ internal class TestData : IDisposable
     {
         if (!disposedValue)
         {
-            View.Dispose();
-            Writer.Dispose();
-            Reader.Dispose();
             Stream.Dispose();
 
             disposedValue = true;

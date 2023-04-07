@@ -2,13 +2,13 @@
 namespace BinaryView_Tests;
 partial class Section
 {
-    public static void View()
+    public static void Combined()
     {
-        TUtils.WriteTitle("test View");
+        TestSys.WriteTitle("test Combined");
 
         byte[] data0 = new byte[8] { 0, 1, 2, 3, 4, 5, 6, 7 };
 
-        TUtils.RunTest("View", () =>
+        TestSys.RunTest("Combined", () =>
         {
             var file = new MemoryStream();
 
@@ -18,30 +18,28 @@ partial class Section
             }
 
             file.Seek(0, SeekOrigin.Begin);
-            using (var view = new BinaryView(file))
+            using (var td = new TestData(file))
             {
-                var bw = view.Writer;
-                var br = view.Reader;
+                var bw = td.Writer;
+                var br = td.Reader;
 
                 var rdata = br.ReadArray<byte>(8);
-                if (TUtils.AssertIListIsEqual(rdata, data0))
-                    return TestResult.Failure;
+                TestSys.AssertIListIsEqual(rdata, data0);
 
-                view.Seek(1);
+                td.Seek(1);
                 bw.Write<byte>(200);
 
-                view.Seek(1);
+                td.Seek(1);
                 byte val = br.ReadByte();
 
-                if (TUtils.AssertValueIsEqual<byte>(val, 200))
-                    return TestResult.Failure;
+                TestSys.AssertValueIsEqual<byte>(val, 200);
             }
 
-            TUtils.WriteSucces($"OK");
+            TestSys.WriteSucces($"OK");
             return TestResult.Success;
         });
 
-        TUtils.RunTest("Insert", () =>
+        TestSys.RunTest("Insert", () =>
         {
             var file = new MemoryStream();
 
@@ -51,12 +49,12 @@ partial class Section
             }
 
             file.Seek(0, SeekOrigin.Begin);
-            using (var view = new BinaryView(file))
+            using (var td = new TestData(file))
             {
-                var bw = view.Writer;
-                var br = view.Reader;
+                var bw = td.Writer;
+                var br = td.Reader;
 
-                view.Seek(4);
+                td.Seek(4);
                 bw.BeginInsert();
 
                 bw.Write<byte>(100);
@@ -64,14 +62,13 @@ partial class Section
 
                 bw.EndInsert();
 
-                view.Seek(0);
+                td.Seek(0);
                 var vdata1 = new byte[10] { 0, 1, 2, 3, 100, 101, 4, 5, 6, 7 };
                 var rdata1 = br.ReadArray<byte>(10);
-                if (TUtils.AssertIListIsEqual(rdata1, vdata1))
-                    return TestResult.Failure;
+                TestSys.AssertIListIsEqual(rdata1, vdata1);
             }
 
-            TUtils.WriteSucces($"OK");
+            TestSys.WriteSucces($"OK");
             return TestResult.Success;
         });
     }

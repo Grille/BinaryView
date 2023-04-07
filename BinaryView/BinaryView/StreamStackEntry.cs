@@ -6,52 +6,58 @@ using System.IO;
 namespace GGL.IO;
 public class StreamStackEntry : IDisposable
 {
+    public readonly StreamStack Owner;
     public readonly Stream Stream;
-    public readonly object Args;
-    public readonly bool Closeable;
+    public readonly bool LeaveOpen;
 
-    public readonly BufferedStream WriteBuffer;
-    public readonly BufferedStream ReadBuffer;
+    public bool IsPeak => Owner.Peak == this;
 
-    public bool IsDisposed
+    public bool IsDisposed => disposedValue;
+    
+
+    public StreamStackEntry(StreamStack owner, Stream stream, bool leaveOpen)
     {
-        get => disposedValue;
-    }
-
-    public StreamStackEntry(Stream stream, bool closeable, object args = null)
-    {
+        Owner = owner;
         Stream = stream;
-        Args = args;
-        Closeable = closeable;
-    }
-
-    public void Deconstruct(out Stream stream, out object args)
-    {
-        stream = Stream;
-        args = Args;
+        LeaveOpen = leaveOpen;
     }
 
     #region IDisposable Support
     private bool disposedValue = false; // To detect redundant calls
 
-    protected virtual void Dispose(bool disposing)
+    /// <summary>
+    /// Entry alredy poped from stack, and will be disposed next.
+    /// </summary>
+    protected virtual void BeforeDispose()
     {
-        if (!disposedValue)
-        {
-            if (Closeable)
-                Stream.Dispose();
-            disposedValue = true;
-        }
+
+    }
+
+    private void dispose()
+    {
+        if (disposedValue)
+            return;
+
+        // pop if still on stack, to support using syntax.
+        if (IsPeak)
+            Owner.Pop();
+
+        BeforeDispose();
+
+        if (!LeaveOpen)
+            Stream.Dispose();
+
+        disposedValue = true;
     }
 
     ~StreamStackEntry()
     {
-        Dispose(false);
+        dispose();
     }
 
     public void Dispose()
     {
-        Dispose(true);
+        dispose();
         GC.SuppressFinalize(this);
     }
     #endregion

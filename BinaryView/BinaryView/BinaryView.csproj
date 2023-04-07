@@ -1,19 +1,18 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>net45; netstandard2.1</TargetFrameworks>
+        <TargetFrameworks>net45; netstandard2.1; net5; net6;</TargetFrameworks>
         <LangVersion>10</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <Authors>Paul Hirch</Authors>
-        <Description>Class to easily write and read binary data from streams</Description>
+        <Description>Classes to easily write and read binary data from streams</Description>
         <PackageLicenseExpression></PackageLicenseExpression>
         <FileVersion>1.0</FileVersion>
-        <AssemblyVersion>2.3.2</AssemblyVersion>
+        <AssemblyVersion>2.4.0</AssemblyVersion>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
         <PackageId>GGL.BinaryView</PackageId>
         <SignAssembly>false</SignAssembly>
-        <Version>2.3.2</Version>
+        <Version>2.4.0</Version>
         <RepositoryUrl>https://github.com/Grille/BinaryView</RepositoryUrl>
         <PackageTags />
         <EnableNETAnalyzers>False</EnableNETAnalyzers>
@@ -22,6 +21,7 @@
         <Owners>Grille</Owners>
         <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
         <Copyright>Copyright (c) 2022 Paul Hirch</Copyright>
+        <RootNamespace>GGL.IO</RootNamespace>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -31,6 +31,7 @@
 
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
         <OutputPath>bin\</OutputPath>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <DocumentationFile>bin\BinaryView.xml</DocumentationFile>
     </PropertyGroup>
 

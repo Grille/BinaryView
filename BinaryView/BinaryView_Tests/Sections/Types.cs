@@ -4,7 +4,7 @@ partial class Section
 {
     public static void PrimitiveTypes()
     {
-        TUtils.WriteTitle("test types");
+        TestSys.WriteTitle("test types");
 
         Tests.WriteReadPrimitive("Boolean", false, true);
         Tests.WriteReadPrimitive("Char", char.MinValue, char.MaxValue);
@@ -16,6 +16,9 @@ partial class Section
         Tests.WriteReadPrimitive("Int32", int.MinValue, int.MaxValue);
         Tests.WriteReadPrimitive("UInt64", ulong.MinValue, ulong.MaxValue);
         Tests.WriteReadPrimitive("Int64", long.MinValue, long.MaxValue);
+#if NET5_0_OR_GREATER
+        Tests.WriteReadPrimitive("Half", Half.MinValue, Half.MaxValue);
+#endif
         Tests.WriteReadPrimitive("Single", float.MinValue, float.MaxValue);
         Tests.WriteReadPrimitive("Double", double.MinValue, double.MaxValue);
         Tests.WriteReadPrimitive("Decimal", decimal.MinValue, decimal.MaxValue);

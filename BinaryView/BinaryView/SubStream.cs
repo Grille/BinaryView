@@ -5,12 +5,15 @@ using System.IO;
 
 namespace GGL.IO;
 
-internal class SubStream : Stream
+internal class ReadonlySubStream : Stream
 {
     Stream baseStream;
     long offset, length, position = 0;
-    public SubStream(Stream baseStream, long offset, long length)
+    public ReadonlySubStream(Stream baseStream, long offset, long length)
     {
+        if (baseStream == null)
+            throw new ArgumentNullException(nameof(baseStream));
+
         this.baseStream = baseStream;
         this.offset = offset;
         this.length = length;
@@ -18,20 +21,23 @@ internal class SubStream : Stream
         baseStream.Seek(offset, SeekOrigin.Begin);
     }
 
+    public override int ReadByte()
+    {
+        long remaining = length - (position + offset);
+        if (remaining > 0)
+            return baseStream.ReadByte();
+        return -1;
+    }
+
     public override int Read(byte[] buffer, int offset, int count)
     {
-        CheckDisposed();
-        long remaining = length - position;
-        if (remaining <= 0) return 0;
-        if (remaining < count) count = (int)remaining;
+        long remaining = length - (position + offset);
+        count = Math.Min(count, (int)remaining);
+        if (count <= 0)
+            return 0;
         int read = baseStream.Read(buffer, offset, count);
         position += read;
         return read;
-    }
-
-    private void CheckDisposed()
-    {
-        if (baseStream == null) throw new ObjectDisposedException(GetType().Name);
     }
 
     public override long Seek(long offset, SeekOrigin origin)
@@ -53,15 +59,15 @@ internal class SubStream : Stream
         return pos;
     }
 
-    public override bool CanRead => true;
+    public override bool CanRead => baseStream.CanRead;
 
-    public override bool CanSeek => true;
+    public override bool CanSeek => baseStream.CanSeek;
 
     public override bool CanWrite => false;
 
     public override long Length => length;
 
-    public override long Position { get => position; set { position = this.Seek(value, SeekOrigin.Begin); } }
+    public override long Position { get => position; set { position = Seek(value, SeekOrigin.Begin); } }
 
     public override void Flush()
     {

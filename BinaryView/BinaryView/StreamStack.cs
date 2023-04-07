@@ -6,13 +6,9 @@ using System.IO;
 namespace GGL.IO;
 public class StreamStack : Stack<StreamStackEntry>, IDisposable
 {
-    public event EventHandler<StreamStackEntry> PeakChanged;
-
-    public StreamStack(Stream stream, bool closable) : this(new StreamStackEntry(stream, closable)) { }
-
-    public StreamStack(StreamStackEntry entry)
+    public StreamStack(Stream stream, bool leaveOpen)
     {
-        Push(entry);
+        Push(new StreamStackEntry(this, stream, leaveOpen));
     }
 
     public StreamStackEntry Peak { private set; get; }
@@ -22,33 +18,40 @@ public class StreamStack : Stack<StreamStackEntry>, IDisposable
     /// </summary>
     /// <param name="args"></param>
     /// <returns></returns>
-    public StreamStackEntry Create(object args = null)
+    public StreamStackEntry Create()
     {
-        var obj = new StreamStackEntry(new MemoryStream(), true, args);
+        var obj = new StreamStackEntry(this, new MemoryStream(), true);
         Push(obj);
         return obj;
     }
 
-    public void Push(Stream stream, bool closable, object args = null)
+    public StreamStackEntry CreateFrom(Stream stream)
     {
-        Push(new(stream, closable, args));
+        var obj = Create();
+        CopyToPeak(stream);
+        Peak.Stream.Seek(0, SeekOrigin.Begin);
+        return obj;
+    }
+
+    public void Push(Stream stream, bool leaveOpen)
+    {
+        Push(new(this, stream, leaveOpen));
     }
 
     public new void Push(StreamStackEntry entry)
     {
+        if (entry.Owner != this)
+            throw new ArgumentException("Owner not this.");
+
         base.Push(entry);
         Peak = entry;
-        PeakChanged?.Invoke(this, entry);
     }
 
+    /// <inheritdoc/>
     public new StreamStackEntry Pop()
     {
         var entry = base.Pop();
-        if (Count > 0)
-        {
-            Peak = Peek();
-            PeakChanged?.Invoke(this, Peak);
-        }
+        Peak = Count > 0 ? Peek() : null;
         return entry;
     }
 
@@ -88,7 +91,7 @@ public class StreamStack : Stack<StreamStackEntry>, IDisposable
     public Stream GetSubStream(long length)
     {
         var peakStream = Peek().Stream;
-        var subStream = new SubStream(peakStream, peakStream.Position, length);
+        var subStream = new ReadonlySubStream(peakStream, peakStream.Position, length);
         return subStream;
     }
 
@@ -102,10 +105,7 @@ public class StreamStack : Stack<StreamStackEntry>, IDisposable
             while (Count > 0)
             {
                 var stream = Pop();
-                if (stream != null && stream.Closeable && stream.Stream != null)
-                {
-                    stream.Dispose();
-                }
+                stream?.Dispose();
             }
 
             disposedValue = true;

@@ -6,4 +6,5 @@ global using System.Threading.Tasks;
 global using System.IO;
 global using System.Drawing;
 global using GGL.IO;
+global using GGL.IO.Compression;
 global using System.Diagnostics;
