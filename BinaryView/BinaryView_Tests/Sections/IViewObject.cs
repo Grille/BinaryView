@@ -50,6 +50,5 @@ partial class Section
             TestSys.WriteSucces($"OK");
             return TestResult.Success;
         });
-
     }
 }

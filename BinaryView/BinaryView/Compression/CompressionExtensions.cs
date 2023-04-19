@@ -1,13 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.IO;
 using System.IO.Compression;
-using System.Collections;
-using System.Collections.Specialized;
-using System.Reflection.Emit;
 
 namespace GGL.IO.Compression;
 
@@ -16,8 +8,6 @@ namespace GGL.IO.Compression;
 public static class CompressionExtensions
 {
     // Read
-    record struct CompressedSectionInfo(CompressionType Type, CompressionLevel Level, LengthPrefix LengthPrefix);
-
     /// <summary>All Data after this will be read as compressed</summary>
     public static void CompressAll(this BinaryViewReader br, CompressionType type)
     {
@@ -52,11 +42,10 @@ public static class CompressionExtensions
         bw.StreamStack.Push(new CompressorStackEntry(bw, type, level));
     }
 
-    public static StreamStackEntry BeginCompressedSection(
-        this BinaryViewWriter bw, CompressionType type,
-        CompressionLevel level = CompressionLevel.Optimal, 
-        LengthPrefix lengthPrefix = LengthPrefix.Default
-    )
+    public static StreamStackEntry BeginCompressedSection(this BinaryViewWriter bw, CompressionType type, LengthPrefix lengthPrefix = LengthPrefix.Default)
+        => BeginCompressedSection(bw, type, CompressionLevel.Optimal, lengthPrefix);
+
+    public static StreamStackEntry BeginCompressedSection(this BinaryViewWriter bw, CompressionType type, CompressionLevel level, LengthPrefix lengthPrefix = LengthPrefix.Default)
     {
         bw.StreamStack.Push(new CompressorStackEntry(bw, type, level, lengthPrefix));
         return bw.StreamStack.Peak;
@@ -80,7 +69,10 @@ public static class CompressionExtensions
     }
 
     // view
-    public static void BeginCompressedSection(this BinaryView view, CompressionType type, CompressionLevel level = CompressionLevel.Optimal, LengthPrefix prefix = LengthPrefix.Default)
+    public static void BeginCompressedSection(this BinaryView view, CompressionType type, LengthPrefix prefix = LengthPrefix.Default)
+        => BeginCompressedSection(view, type, CompressionLevel.Optimal, prefix);
+
+    public static void BeginCompressedSection(this BinaryView view, CompressionType type, CompressionLevel level, LengthPrefix prefix = LengthPrefix.Default)
     {
         if (view.Mode == ViewMode.Read)
             view.Reader.BeginCompressedSection(type, prefix);

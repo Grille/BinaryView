@@ -14,8 +14,8 @@ partial class Section
         Tests.WriteReadPrefix(LengthPrefix.Int64, long.MinValue, 8);
         Tests.WriteReadPrefix(LengthPrefix.UInt64, long.MaxValue, 8);
 
-        Tests.WriteReadPrefix(LengthPrefix.Single, (1 << 24), 4);
-        Tests.WriteReadPrefix(LengthPrefix.Double, (1 << 53), 8);
+        Tests.WriteReadPrefix(LengthPrefix.Single, (1L << 24), 4);
+        Tests.WriteReadPrefix(LengthPrefix.Double, (1L << 53), 8);
 
         Tests.WriteReadPrefix(LengthPrefix.UIntSmart15, 0, 1);
         Tests.WriteReadPrefix(LengthPrefix.UIntSmart15, UIntSmart15.MaxValue7Bit, 1);

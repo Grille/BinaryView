@@ -194,14 +194,14 @@ public class BinaryViewReader : StreamStackUser
     /// <param name="offset">Offset in dstList</param>
     public unsafe void ReadRemainderToIList<T>(IList<T> dstList, int offset) where T : unmanaged
     {
-        long count = (PeakStream.Length - PeakStream.Position) / sizeof(T);
+        long count = Remaining / sizeof(T);
         ReadToIList(dstList, offset, count);
     }
 
     /// <summary>Reads remaining bytes</summary>
     public unsafe byte[] ReadRemainder()
     {
-        long count = PeakStream.Length - PeakStream.Position;
+        long count = Remaining;
         return ReadArray<byte>(count);
     }
 

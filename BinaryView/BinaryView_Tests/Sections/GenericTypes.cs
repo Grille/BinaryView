@@ -22,6 +22,7 @@ partial class Section
         Tests.WriteReadGeneric(float.MinValue, float.MaxValue);
         Tests.WriteReadGeneric(double.MinValue, double.MaxValue);
         Tests.WriteReadGeneric(decimal.MinValue, decimal.MaxValue);
+        Tests.WriteReadGeneric(new UIntSmart15(42));
         Tests.WriteReadGeneric(new Int32Single(42, 3.6f));
         Tests.WriteReadGeneric(new DateTime(2020, 07, 20, 15, 54, 24));
         Tests.WriteReadGeneric(new Point(10, 42));

@@ -1,9 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.IO;
+using System.IO.Compression;
 
 namespace GGL.IO.Compression;
 internal class CompressorStackEntry : StreamStackEntry
@@ -35,7 +31,7 @@ internal class CompressorStackEntry : StreamStackEntry
     {
         using (var compressedStream = new MemoryStream())
         {
-            using (var compressor = CompressionFactory.CreateCompressor(Type, compressedStream, (System.IO.Compression.CompressionLevel)Level, true))
+            using (var compressor = CompressionFactory.CreateCompressor(Type, compressedStream, Level, true))
             {
                 Stream.Seek(0, SeekOrigin.Begin);
                 Stream.CopyTo(compressor);

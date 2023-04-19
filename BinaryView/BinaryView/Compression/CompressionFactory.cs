@@ -1,10 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Collections.Generic;
-using System.Dynamic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.IO.Compression;
 
 
@@ -24,7 +19,7 @@ internal static class CompressionFactory
         _ => throw new NotImplementedException($"{type} not available in this version of net."),
     };
 
-    public static Stream CreateCompressor(CompressionType type, Stream baseStream, System.IO.Compression.CompressionLevel level, bool leaveOpen) => type switch
+    public static Stream CreateCompressor(CompressionType type, Stream baseStream, CompressionLevel level, bool leaveOpen) => type switch
     {
         CompressionType.Deflate => new DeflateStream(baseStream, level, leaveOpen),
         CompressionType.GZip => new GZipStream(baseStream, level, leaveOpen),

@@ -8,3 +8,4 @@ global using System.Drawing;
 global using GGL.IO;
 global using GGL.IO.Compression;
 global using System.Diagnostics;
+global using System.Runtime.CompilerServices;
