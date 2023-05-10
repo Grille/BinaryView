@@ -59,6 +59,7 @@ public static class CompressionExtensions
         entry.Dispose();
     }
 
+    // view
     /// <summary>All Data after this will be compressed</summary>
     public static void CompressAll(this BinaryView view, CompressionType type, CompressionLevel level = CompressionLevel.Optimal)
     {
@@ -68,7 +69,6 @@ public static class CompressionExtensions
             view.Writer.CompressAll(type, level);
     }
 
-    // view
     public static void BeginCompressedSection(this BinaryView view, CompressionType type, LengthPrefix prefix = LengthPrefix.Default)
         => BeginCompressedSection(view, type, CompressionLevel.Optimal, prefix);
 

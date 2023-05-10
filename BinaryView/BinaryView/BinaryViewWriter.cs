@@ -14,6 +14,10 @@ namespace GGL.IO;
 
 public class BinaryViewWriter : StreamStackUser
 {
+    public bool ValidateLengthPrefix = true;
+    public bool ValidateEncoding = true;
+    public bool ValidateTerminatedString = true;
+
     /// <summary>Initialize BinaryView with a empty MemoryStream</summary>
     public BinaryViewWriter() :
         this(new StreamStack(new MemoryStream(), false))
@@ -86,15 +90,15 @@ public class BinaryViewWriter : StreamStackUser
         obj.WriteToView(this);
     }
 
-    /// <summary>Writes any object to the stream and increases the position by the size of the struct</summary>
-    /// <typeparam name="T"></typeparam> Type of unmanaged struct
-    /// <param name="obj">Object to write</param>
-    /// <remarks>WARNING Serialize can be very inefficient, use Write() instead when possible!</remarks>
+    /// <inheritdoc cref="IFormatter.Serialize(Stream, object)"/>
+    [Obsolete]
     public void Serialize<T>(T obj)
     {
-        Serialize(obj, DefaultFormatter);
+        Serialize(obj, Formatter);
     }
 
+    /// <inheritdoc cref="IFormatter.Serialize(Stream, object)"/>
+    [Obsolete]
     public void Serialize<T>(T obj, IFormatter formatter)
     {
         formatter.Serialize(PeakStream, obj);
@@ -172,13 +176,27 @@ public class BinaryViewWriter : StreamStackUser
     /// <summary>Writes a decimal to the stream and increases the position by sixteen bytes</summary>
     public unsafe void WriteDecimal(decimal input) => Write(input);
 
-    /// <summary>Writes a string as byte array with an length prefix.</summary>
-    public void WriteString(in string input, LengthPrefix lengthPrefix = LengthPrefix.Default, Encoding encoding = null)
+    private byte[] GetEncodingBytes(string input, Encoding encoding)
     {
         if (encoding == null)
-            encoding = DefaultEncoding;
+            encoding = Encoding;
 
-        var bytes = encoding.GetBytes(input);
+        if (ValidateEncoding)
+        {
+            var bytes = encoding.GetBytes(input);
+            var valstr = encoding.GetString(bytes);
+            if (input != valstr)
+                throw new ArgumentException($"Encoding to {encoding.EncodingName} failed.");
+            else return bytes;
+        }
+        else
+            return encoding.GetBytes(input);
+    }
+
+    /// <summary>Writes a string as byte array with an length prefix.</summary>
+    public void WriteString(string input, LengthPrefix lengthPrefix = LengthPrefix.Default, Encoding encoding = null)
+    {
+        var bytes = GetEncodingBytes(input, encoding);
 
         WriteArray(bytes, lengthPrefix);
     }
@@ -189,33 +207,59 @@ public class BinaryViewWriter : StreamStackUser
     /// <remarks>null-terminated strings are error prone, if possible use WriteString instead.</remarks>
     /// <param name="input"></param>
     /// <param name="encoding"></param>
-    public void WriteTerminatedString(in string input, Encoding encoding = null)
+    public void WriteTerminatedString(string input, Encoding encoding = null)
     {
-        if (encoding == null)
-            encoding = DefaultEncoding;
+        var bytes = GetEncodingBytes(input, encoding);
 
-        var bytes = encoding.GetBytes(input);
+        if (ValidateTerminatedString)
+            for (int i = 0; i < bytes.Length; i++)
+                if (bytes[i] == 0)
+                    throw new ArgumentException($"Unexpected null terminator found at {i}/{bytes.Length} in string.");
+
         WriteArray(bytes, LengthPrefix.None);
         WriteByte(0);
     }
 
     /// <summary>Writes a array of strings</summary>
-    public void WriteStringArray(string[] input)
+    public void WriteStringArray(string[] input, LengthPrefix arrayPrefix = LengthPrefix.Default, LengthPrefix stringPrefix = LengthPrefix.Default)
     {
-        WriteLengthPrefix(LengthPrefix.UInt32, input.Length);
-        for (int i = 0; i < input.Length; i++) WriteString(input[i], LengthPrefix.UInt32);
+        WriteLengthPrefix(arrayPrefix, input.Length);
+        for (int i = 0; i < input.Length; i++) WriteString(input[i], stringPrefix);
     }
 
+    private bool DoValidateLengthPrefix(LengthPrefix lengthPrefix, long length) => lengthPrefix switch
+    {
+        LengthPrefix.None => true,
+        LengthPrefix.Default => DoValidateLengthPrefix(LengthPrefix, length),
+        LengthPrefix.SByte => length == (sbyte)length,
+        LengthPrefix.Byte => length == (byte)length,
+        LengthPrefix.Int16 => length == (short)length,
+        LengthPrefix.UInt16 => length == (ushort)length,
+        LengthPrefix.Int32 => length == (int)length,
+        LengthPrefix.UInt32 => length == (uint)length,
+        LengthPrefix.Int64 => true,
+        LengthPrefix.UInt64 => length == (long)(ulong)length,
+        LengthPrefix.Single => length == (long)(float)length,
+        LengthPrefix.Double => length == (long)(double)length,
+        LengthPrefix.UIntSmart15 => length == (long)(UIntSmart15)length,
+        LengthPrefix.UIntSmart62 => length == (long)(UIntSmart62)length,
+        _ => throw new ArgumentOutOfRangeException(nameof(lengthPrefix), lengthPrefix.ToString())
+    };
 
 
     public void WriteLengthPrefix(LengthPrefix lengthPrefix, long length)
     {
+        if (ValidateLengthPrefix && !DoValidateLengthPrefix(lengthPrefix, length))
+        {
+            throw new InvalidCastException($"Value {length} can't be casted to {lengthPrefix}.");
+        }
+
         switch (lengthPrefix)
         {
             case LengthPrefix.None:
                 return;
             case LengthPrefix.Default:
-                WriteLengthPrefix(DefaultLengthPrefix, length);
+                WriteLengthPrefix(LengthPrefix, length);
                 return;
             case LengthPrefix.SByte:
                 WriteSByte((sbyte)length);

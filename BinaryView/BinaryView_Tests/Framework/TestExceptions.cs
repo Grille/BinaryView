@@ -5,16 +5,16 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace BinaryView_Tests.Framework;
-internal class TestFailException : Exception
+public class TestFailException : Exception
 {
     public TestFailException(string msg) : base(msg) { 
 
     }
 }
 
-internal class TestSucException : Exception
+public class TestSuccessException : Exception
 {
-    public TestSucException(string msg) : base(msg)
+    public TestSuccessException(string msg) : base(msg)
     {
 
     }

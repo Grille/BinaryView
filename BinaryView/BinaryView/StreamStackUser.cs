@@ -10,13 +10,13 @@ public abstract class StreamStackUser : IDisposable
 {
     protected byte[] Buffer { get; private set; }
 
-    public IFormatter DefaultFormatter = new BinaryFormatter();
-    public Encoding DefaultEncoding = Encoding.Default;
-
+    private IFormatter _formatter = new BinaryFormatter();
+    private Encoding _encoding = Encoding.Default;
     private int _bufferSize = 0;
     private LengthPrefix _lengthPrefix = LengthPrefix.UInt32;
     private Endianness _bitOrder = Endianness.Default;
     private Endianness _byteOrder = Endianness.Default;
+
     protected bool NeedBitReorder { get; private set; } = false;
     protected bool NeedByteReorder { get; private set; } = false;
     protected bool NeedReorder { get; private set; } = false;
@@ -31,6 +31,7 @@ public abstract class StreamStackUser : IDisposable
             NeedReorder = _bitOrder != Endianness.Default || _byteOrder != Endianness.Default;
         }
     }
+
     public Endianness ByteOrder
     {
         get => _bitOrder;
@@ -42,6 +43,9 @@ public abstract class StreamStackUser : IDisposable
         }
     }
 
+    /// <summary>
+    /// Size of buffer for write and read operations, grows dynamically.
+    /// </summary>
     public int BufferSize
     {
         get => _bufferSize;
@@ -52,32 +56,69 @@ public abstract class StreamStackUser : IDisposable
         }
     }
 
-    public LengthPrefix DefaultLengthPrefix
+    /// <summary>
+    /// Formatter used by Serialize, if not specified as parameter.
+    /// </summary>
+    public IFormatter Formatter
+    {
+        get => _formatter;
+        set
+        {
+            if (value == null)
+                throw new ArgumentNullException(nameof(value));
+            _formatter = value;
+        }
+    }
+
+    /// <summary>
+    /// Encoding used by Strings, if not specified as parameter.
+    /// </summary>
+    public Encoding Encoding
+    {
+        get => _encoding;
+        set
+        {
+            if (value == null)
+                throw new ArgumentNullException(nameof(value));
+            _encoding = value;
+        }
+    }
+
+    /// <summary>
+    /// LengthPrefix used by (String, Array, etc.) functions, if not specified as parameter.
+    /// </summary>
+    public LengthPrefix LengthPrefix
     {
         get => _lengthPrefix;
         set
         {
             if (value == LengthPrefix.Default)
-                throw new ArgumentException("DefaultLengthPrefix can't be set to Default.");
+                throw new ArgumentException($"{nameof(LengthPrefix)} can't be set to Default.");
             _lengthPrefix = value;
         }
     }
 
     public readonly StreamStack StreamStack;
 
-    public Stream PeakStream { get => StreamStack.Peak.Stream; }
+    public Stream PeakStream => StreamStack.Peak.Stream; 
 
+    /// <inheritdoc cref="MemoryStream.Position"/>
     public long Position
     {
         get => PeakStream.Position;
         set => PeakStream.Position = value;
     }
+
+    /// <inheritdoc cref="MemoryStream.Length"/>
     public long Length
     {
         get => PeakStream.Length;
         set => PeakStream.SetLength(value);
     }
 
+    /// <summary>
+    /// Count of remaining bytes in PeakStream.
+    /// </summary>
     public long Remaining => Length - Position;
 
     public StreamStackUser(StreamStack stack, int bufferSize = 16)
@@ -97,11 +138,13 @@ public abstract class StreamStackUser : IDisposable
         }
     }
 
+    /// <inheritdoc cref="MemoryStream.Seek(long, SeekOrigin)"/>
     public long Seek(long offset, SeekOrigin origin = SeekOrigin.Begin)
     {
         return PeakStream.Seek(offset, origin);
     }
 
+    /// <summary>Returns current Position, executes Stream.Seek after.</summary>
     public long Exch(long offset, SeekOrigin origin = SeekOrigin.Begin)
     {
         long pos = PeakStream.Position;
@@ -119,6 +162,7 @@ public abstract class StreamStackUser : IDisposable
         Dispose(false);
     }
 
+    /// <inheritdoc cref="IDisposable.Dispose"/>
     public void Dispose()
     {
         Dispose(true);

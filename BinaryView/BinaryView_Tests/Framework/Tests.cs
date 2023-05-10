@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using GGL.IO;
 using System.Diagnostics;
 using System.Threading;
+using System.Text;
+using BinaryView_Tests.Framework;
 
 namespace BinaryView_Tests;
 
@@ -51,59 +53,62 @@ static class Tests
         data.Dispose();
     }
 
-    public static void WriteReadString(string str, LengthPrefix lengthPrefix, Encoding encoding)
+    public static void WriteReadString(string str, LengthPrefix lengthPrefix, Encoding encoding, bool expectException = false)
     {
         var data = new TestData();
         var bw = data.Writer;
         var br = data.Reader;
 
+        bw.ValidateEncoding = true;
+
         TestSys.RunTest($"read/write string[{encoding.BodyName}].length:{lengthPrefix} ({str})", () =>
         {
             bw.Position = 0;
-            bw.WriteString(str, lengthPrefix, encoding);
+
+            TestSys.ExpectException<ArgumentException>(expectException, () =>
+            {
+                bw.WriteString(str, lengthPrefix, encoding);
+            });
+
             TestSys.Write($"l{str.Length} b{bw.Position} ");
             bw.Position = 0;
             string result = br.ReadString(lengthPrefix, encoding);
-            if (result.Equals(str))
-            {
-                TestSys.WriteSucces("OK");
-                return TestResult.Success;
-            }
 
-            else
-            {
-                TestSys.WriteFail($"FAIL \"{result}\"");
-                return TestResult.Failure;
-            }
+            TestSys.AssertValueIsEqual(result, str);
+
+            TestSys.Succes();
+            return TestResult.Success;
         });
 
         data.Dispose();
     }
 
-    public static void WriteReadCString(string str, Encoding encoding)
+    public static void WriteReadCString(string str, Encoding encoding, bool expectException = false)
     {
         var data = new TestData();
         var bw = data.Writer;
         var br = data.Reader;
 
+        bw.ValidateEncoding = false;
+        bw.ValidateTerminatedString = true;
+
         TestSys.RunTest($"read/write c-string[{encoding.BodyName}] ({str})", () =>
         {
             bw.Position = 0;
-            bw.WriteTerminatedString(str, encoding);
+
+            TestSys.ExpectException<ArgumentException>(expectException, () =>
+            {
+                bw.WriteTerminatedString(str, encoding);
+            });
+
             TestSys.Write($"l{str.Length} b{bw.Position} ");
             bw.Position = 0;
             string result = br.ReadTerminatedString(encoding);
-            if (result.Equals(str))
-            {
-                TestSys.WriteSucces("OK");
-                return TestResult.Success;
-            }
 
-            else
-            {
-                TestSys.WriteFail($"FAIL \"{result}\"");
-                return TestResult.Failure;
-            }
+            TestSys.AssertValueIsEqual(result, str);
+
+            TestSys.Succes();
+            return TestResult.Success;
         });
 
         data.Dispose();
@@ -127,29 +132,20 @@ static class Tests
             bw.Write(input);
             int wSize = data.PopPos();
 
-            if (!TestSys.MatchBitsInStream(mask, data.Stream, out string cmpmask))
-            {
-                TestSys.WriteFail($"FAIL w-bits:'{cmpmask}'");
-                return TestResult.Failure;
-            }
+            TestSys.AssertBitsMatchStream(mask, data.Stream, out string cmpmask);
+
             data.ResetPos();
 
             T result = br.Read<T>();
             int rSize = data.PopPos();
 
-            if (wSize != rSize)
-            {
-                TestSys.WriteFail($"FAIL w:{wSize} != r:{rSize}");
-                return TestResult.Failure;
-            }
-            data.ResetPos();
-            if (!result.Equals(input))
-            {
-                TestSys.WriteFail($"FAIL r-v:'{result}'");
-                return TestResult.Failure;
-            }
+            TestSys.AssertValueIsEqual(rSize, wSize);
 
-            TestSys.WriteSucces($"OK {wSize}b {cmpmask}");
+            data.ResetPos();
+
+            TestSys.AssertValueIsEqual(result, input);
+
+            TestSys.Succes($"OK {wSize}b {cmpmask}");
             return TestResult.Success;
         });
 
@@ -233,24 +229,24 @@ static class Tests
 
         data.Dispose();
     }
-    public static void WriteReadStringArray<T>(string typeName, T[] input, LengthPrefix lengthPrefix = LengthPrefix.Default)
+    public static void WriteReadStringArray(string typeName, string[] input, LengthPrefix lengthPrefix = LengthPrefix.Default)
     {
         var data = new TestData();
         var bw = data.Writer;
         var br = data.Reader;
 
         var writeInfo = typeof(BinaryViewWriter).GetMethod($"Write{typeName}");
-        var write = (Action<T[]>)writeInfo.CreateDelegate(typeof(Action<T[]>), bw);
+        var write = (Action<string[], LengthPrefix, LengthPrefix>)writeInfo.CreateDelegate(typeof(Action<string[], LengthPrefix, LengthPrefix>), bw);
 
         var readInfo = typeof(BinaryViewReader).GetMethod($"Read{typeName}");
-        var read = (Func<T[]>)readInfo.CreateDelegate(typeof(Func<T[]>), br);
+        var read = (Func<LengthPrefix, LengthPrefix, string[]>)readInfo.CreateDelegate(typeof(Func<LengthPrefix, LengthPrefix, string[]>), br);
 
-        string typ = typeof(T).Name;
-        TestSys.RunTest("read/write " + typ + "[] (" + TestSys.IListToString(input) + ")", () =>
+        string typ = typeof(string).Name;
+        TestSys.RunTest($"read/write {typ}[].length:{lengthPrefix} ({TestSys.IListToString(input)})", () =>
         {
-            write(input);
+            write(input, lengthPrefix, lengthPrefix);
             data.ResetPos();
-            T[] result = read();
+            string[] result = read(lengthPrefix, lengthPrefix);
             if (input.Length != result.Length)
             {
                 TestSys.WriteFail($"FAIL length not equal{input.Length}!={result.Length}");
@@ -305,31 +301,21 @@ static class Tests
 
     public static void WriteReadPrefix(LengthPrefix lengthPrefix, long value, int expectedSize, bool expectException = false)
     {
-        var data = new TestData();
+        using var data = new TestData();
         var bw = data.Writer;
         var br = data.Reader;
+
+        bw.ValidateLengthPrefix = true;
 
         TestSys.RunTest($"read/write prefix:{lengthPrefix}({value})", () =>
         {
             bw.Position = 0;
-            try
+
+            TestSys.ExpectException<InvalidCastException>(expectException, () =>
             {
                 bw.WriteLengthPrefix(lengthPrefix, value);
-            }
-            catch (Exception err)
-            {
-                if (expectException)
-                {
-                    TestSys.WriteSucces($"OK {err.Message}");
-                    return TestResult.Success;
-                }
-                throw;
-            }
-            if (expectException)
-            {
-                TestSys.WriteFail($"FAIL expected Exception not thrown");
-                return TestResult.Failure;
-            }
+            });
+
             if (bw.Position != expectedSize)
             {
                 TestSys.WriteFail($"FAIL size not equal {bw.Position}!={expectedSize}");
@@ -342,11 +328,42 @@ static class Tests
                 TestSys.WriteFail($"FAIL length not equal {value}!={result}");
                 return TestResult.Failure;
             }
+
             TestSys.WriteSucces($"OK size:{expectedSize} value:{result}");
             return TestResult.Success;
         });
+    }
 
-        data.Dispose();
+    public static void WriteReadUnsafePrefix(LengthPrefix lengthPrefix, long value, long expectedValue, int expectedSize)
+    {
+        using var data = new TestData();
+        var bw = data.Writer;
+        var br = data.Reader;
+
+        bw.ValidateLengthPrefix = false;
+
+        TestSys.RunTest($"read/write prefix:{lengthPrefix}({value})", () =>
+        {
+            bw.Position = 0;
+
+            bw.WriteLengthPrefix(lengthPrefix, value);
+
+            if (bw.Position != expectedSize)
+            {
+                TestSys.WriteFail($"FAIL size not equal {bw.Position}!={expectedSize}");
+                return TestResult.Failure;
+            }
+
+            bw.Position = 0;
+            long result = br.ReadLengthPrefix(lengthPrefix);
+            if (expectedValue != result)
+            {
+                TestSys.WriteFail($"FAIL length not equal {expectedValue}!={result}");
+                return TestResult.Failure;
+            }
+            TestSys.WriteSucces($"OK size:{expectedSize} original:{value} value:{result}");
+            return TestResult.Success;
+        });
     }
 
     public static void WriteReadMap(int size, bool compressed)

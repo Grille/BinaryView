@@ -15,6 +15,7 @@ partial class Section
 #if NETCOREAPP2_1_OR_GREATER
         Tests.WriteReadString("TestString123", LengthPrefix.UInt32, Encoding.Latin1);
 #endif
+        Tests.WriteReadString("Ä'*Ü-.,><%§ÃoÜ╝ô○╝+", LengthPrefix.UInt32, Encoding.ASCII, true);
         Tests.WriteReadString("Ä'*Ü-.,><%§ÃoÜ╝ô○╝+", LengthPrefix.UInt32, Encoding.UTF8);
         Tests.WriteReadString("Ä'*Ü-.,><%§ÃoÜ╝ô○╝+", LengthPrefix.UInt32, Encoding.Unicode);
 
@@ -26,6 +27,10 @@ partial class Section
 #endif
         Tests.WriteReadCString("Ä'*Ü-.,><%§ÃoÜ╝ô○╝+", Encoding.UTF7);
         Tests.WriteReadCString("Ä'*Ü-.,><%§ÃoÜ╝ô○╝+", Encoding.UTF8);
+
+        Tests.WriteReadCString("abcdef\0", Encoding.UTF8, true);
+        Tests.WriteReadCString("abc\0def", Encoding.UTF8, true);
+        Tests.WriteReadCString("Ä'*Ü-.,><%§ÃoÜ╝ô○╝+", Encoding.Unicode, true);
 #pragma warning restore SYSLIB0001
     }
 }

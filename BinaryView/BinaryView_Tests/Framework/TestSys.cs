@@ -34,7 +34,7 @@ internal static class TestSys
             Watch.Start();
             result = test();
         }
-        catch (TestSucException e)
+        catch (TestSuccessException e)
         {
             WriteSucces(e.Message);
             result = TestResult.Success;
@@ -176,24 +176,49 @@ internal static class TestSys
         return result;
     }
 
+    public static void ExpectException<T>(bool expect, Action action) where T : Exception
+    {
+        if (!expect)
+        {
+            action();
+            return;
+        }
+
+        try
+        {
+            action();
+        }
+        catch (T err)
+        {
+            throw new TestSuccessException($"OK {err.Message}");
+        }
+        throw new TestFailException($"FAIL expected Exception not thrown");
+    }
+
     public static void Succes(string msg = null)
     {
         if (msg == null)
             msg = "OK";
 
-        throw new TestSucException(msg);
+        throw new TestSuccessException(msg);
     }
 
-    public static void AssertValueIsNotEqual<T>(T value0, T value1, string msg = "")
+    public static void AssertBitsMatchStream<T>(T mask, Stream stream, out string cmpmask) where T : unmanaged
     {
-        if (value0.Equals(value1))
-            throw new TestFailException($"FAIL value: {value0} expected: {value1} {msg}");
+        if (!MatchBitsInStream(mask, stream, out cmpmask))
+            throw new TestFailException($"FAIL w-bits:'{cmpmask}'");
     }
 
-    public static void AssertValueIsEqual<T>(T value0, T value1, string msg = "")
+    public static void AssertValueIsNotEqual<T>(T value, T expected, string msg = "")
     {
-        if (!value0.Equals(value1))
-            throw new TestFailException($"FAIL value: {value0} expected: {value1} {msg}");
+        if (value.Equals(expected))
+            throw new TestFailException($"FAIL value: {value} == expected: {expected} {msg}");
+    }
+
+    public static void AssertValueIsEqual<T>(T value, T expected, string msg = "")
+    {
+        if (!value.Equals(expected))
+            throw new TestFailException($"FAIL value: {value} != expected: {expected} {msg}");
     }
 
     public static void AssertIListIsEqual<T>(IList<T> refarray0, IList<T> dataarray1, string msg = "") where T : unmanaged

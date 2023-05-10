@@ -15,6 +15,10 @@ public struct UIntSmart15 : IViewObject
 
     public UIntSmart15(short value)
     {
+        if (value > MaxValue)
+            value = MaxValue;
+        else if (value < MinValue)
+            value = MinValue;
         this.value = value;
     }
 
@@ -38,7 +42,7 @@ public struct UIntSmart15 : IViewObject
     {
         if (value > MaxValue15Bit)
         {
-            throw new ArgumentOutOfRangeException();
+            throw new Exception();
         }
         else if (value > MaxValue7Bit)
         {
@@ -51,7 +55,7 @@ public struct UIntSmart15 : IViewObject
         }
         else
         {
-            throw new ArgumentOutOfRangeException();
+            throw new Exception();
         }
     }
 }
@@ -71,6 +75,10 @@ public struct UIntSmart62 : IViewObject
 
     public UIntSmart62(long value)
     {
+        if (value > MaxValue)
+            value = MaxValue;
+        else if (value < MinValue)
+            value = MinValue;
         this.value = value;
     }
 
@@ -93,7 +101,7 @@ public struct UIntSmart62 : IViewObject
     {
         if (value > MaxValue62Bit)
         {
-            throw new ArgumentOutOfRangeException();
+            throw new Exception();
         }
         else if (value > MaxValue30Bit)
         {
@@ -116,7 +124,7 @@ public struct UIntSmart62 : IViewObject
         }
         else
         {
-            throw new ArgumentOutOfRangeException();
+            throw new Exception();
         }
     }
 }

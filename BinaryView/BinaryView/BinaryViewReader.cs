@@ -13,7 +13,7 @@ namespace GGL.IO;
 
 public class BinaryViewReader : StreamStackUser
 {
-    public long LengthPrefixSafetyMaxValue = long.MaxValue;
+    public long LengthPrefixMaxValue = long.MaxValue;
 
 
     /// <summary>Initialize BinaryView with a empty MemoryStream</summary>
@@ -130,13 +130,15 @@ public class BinaryViewReader : StreamStackUser
         return obj;
     }
 
-    /// <summary>Reads an serialized object from the stream and increases the position by the size of the data</summary>
-    /// <typeparam name="T"></typeparam> Type
+    /// <inheritdoc cref="IFormatter.Deserialize(Stream)"/>
+    [Obsolete]
     public T Deserialize<T>()
     {
-        return Deserialize<T>(DefaultFormatter);
+        return Deserialize<T>(Formatter);
     }
 
+    /// <inheritdoc cref="IFormatter.Deserialize(Stream)"/>
+    [Obsolete]
     public T Deserialize<T>(IFormatter formatter)
     {
         return (T)formatter.Deserialize(PeakStream);
@@ -256,21 +258,23 @@ public class BinaryViewReader : StreamStackUser
         return ReadString(length, encoding);
     }
 
-    public string ReadString(long length, Encoding encoding = null)
+    private string GetEncodingString(byte[] bytes, Encoding encoding)
     {
         if (encoding == null)
-            encoding = DefaultEncoding;
-
-        var bytes = ReadArray<byte>(length);
+            encoding = Encoding;
 
         return encoding.GetString(bytes);
     }
 
+    public string ReadString(long length, Encoding encoding = null)
+    {
+        var bytes = ReadArray<byte>(length);
+
+        return GetEncodingString(bytes, encoding);
+    }
+
     public string ReadTerminatedString(Encoding encoding = null)
     {
-        if (encoding == null)
-            encoding = DefaultEncoding;
-
         var bytes = new List<byte>();
         while (true)
         {
@@ -279,15 +283,15 @@ public class BinaryViewReader : StreamStackUser
             bytes.Add(b);
         }
 
-        return encoding.GetString(bytes.ToArray());
+        return GetEncodingString(bytes.ToArray(), encoding);
     }
 
     /// <summary>Reads a array of string from the stream</summary>
-    public string[] ReadStringArray()
+    public string[] ReadStringArray(LengthPrefix arrayPrefix = LengthPrefix.Default, LengthPrefix stringPrefix = LengthPrefix.Default)
     {
-        long length = ReadLengthPrefix(LengthPrefix.UInt32);
+        long length = ReadLengthPrefix(arrayPrefix);
         string[] retData = new string[length];
-        for (int i = 0; i < retData.Length; i++) retData[i] = ReadString(LengthPrefix.UInt32);
+        for (int i = 0; i < retData.Length; i++) retData[i] = ReadString(stringPrefix);
         return retData;
     }
 
@@ -295,7 +299,7 @@ public class BinaryViewReader : StreamStackUser
     {
         long length = lengthPrefix switch
         {
-            LengthPrefix.Default => ReadLengthPrefix(DefaultLengthPrefix),
+            LengthPrefix.Default => ReadLengthPrefix(LengthPrefix),
             LengthPrefix.SByte => ReadSByte(),
             LengthPrefix.Byte => ReadByte(),
             LengthPrefix.Int16 => ReadInt16(),
@@ -311,8 +315,8 @@ public class BinaryViewReader : StreamStackUser
             _ => throw new ArgumentOutOfRangeException(nameof(lengthPrefix))
         };
 
-        if (length - 1 > LengthPrefixSafetyMaxValue)
-            throw new InvalidDataException($"Length: {length - 1} is over LengthPrefixSafetyMaxValue:{LengthPrefixSafetyMaxValue}");
+        if (length - 1 > LengthPrefixMaxValue)
+            throw new InvalidDataException($"Length: {length - 1} is over LengthPrefixSafetyMaxValue:{LengthPrefixMaxValue}");
 
         return length;
     }
