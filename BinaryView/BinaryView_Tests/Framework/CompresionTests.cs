@@ -62,6 +62,34 @@ internal class CompresionTests
                 return TestResult.Success;
             });
 
+        TestSys.RunTest($"{Name} Section (non using)", () =>
+        {
+            using var data = new TestData();
+            var bw = data.Writer;
+            var br = data.Reader;
+
+            bw.BeginCompressedSection(Type);
+            {
+                bw.WriteArray(data0);
+            }
+            bw.EndCompressedSection();
+
+
+            TestSys.AssertValueIsNotEqual(data.PopPos(), 0, $"FAIL file length is 0");
+
+
+            br.BeginCompressedSection(Type);
+            {
+                rdata0 = br.ReadArray<byte>();
+                TestSys.AssertIListIsEqual(data0, rdata0);
+            }
+            br.EndCompressedSection();
+
+
+            TestSys.Succes($"{data.Position}b");
+            return TestResult.Success;
+        });
+
         TestSys.RunTest($"{Name} Empty Section", () =>
         {
             using var data = new TestData();

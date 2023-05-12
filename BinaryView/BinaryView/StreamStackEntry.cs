@@ -33,7 +33,7 @@ public class StreamStackEntry : IDisposable
 
     }
 
-    private void dispose()
+    public void Dispose()
     {
         if (disposedValue)
             return;
@@ -48,17 +48,6 @@ public class StreamStackEntry : IDisposable
             Stream.Dispose();
 
         disposedValue = true;
-    }
-
-    ~StreamStackEntry()
-    {
-        dispose();
-    }
-
-    public void Dispose()
-    {
-        dispose();
-        GC.SuppressFinalize(this);
     }
     #endregion
 }

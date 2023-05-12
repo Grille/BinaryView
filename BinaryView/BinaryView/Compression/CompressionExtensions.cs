@@ -30,7 +30,7 @@ public static class CompressionExtensions
     public static void EndCompressedSection(this BinaryViewReader br)
     {
         var entry = br.StreamStack.Pop();
-        if (entry is not CompressorStackEntry)
+        if (entry is not DecompressorStackEntry)
             throw new InvalidOperationException();
         entry.Dispose();
     }
