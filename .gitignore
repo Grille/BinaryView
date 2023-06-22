@@ -2,3 +2,5 @@ BinaryView/.vs
 BinaryView/*/bin
 BinaryView/*/obj
 *.csproj.user
+.vscode
+.vs
