@@ -1,7 +1,7 @@
 ﻿using System.IO;
 
 namespace GGL.IO.Compression;
-internal class DecompressorStackEntry : StreamStackEntry
+public class DecompressorStackEntry : StreamStackEntry
 {
     public readonly BinaryViewReader Reader;
     public readonly CompressionType Type;

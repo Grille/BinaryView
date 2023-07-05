@@ -53,28 +53,40 @@ static class Tests
         data.Dispose();
     }
 
-    public static void WriteReadString(string str, LengthPrefix lengthPrefix, Encoding encoding, bool expectException = false)
+    public static void WriteReadString(string str, LengthPrefix lengthPrefix, StringLengthMode lengthMode, Encoding encoding, bool expectException = false)
     {
         var data = new TestData();
         var bw = data.Writer;
-        var br = data.Reader;
 
-        bw.ValidateEncoding = true;
-
-        TestSys.RunTest($"read/write string[{encoding.BodyName}].length:{lengthPrefix} ({str})", () =>
+        TestSys.RunTest($"read/write string[{encoding.BodyName}].length:{lengthPrefix} {lengthMode} ({str})", () =>
         {
-            bw.Position = 0;
-
-            TestSys.ExpectException<ArgumentException>(expectException, () =>
+            int postcheck = 42327856;
+            using (var bw = data.Writer)
             {
-                bw.WriteString(str, lengthPrefix, encoding);
-            });
+                bw.ValidateEncoding = true;
+                bw.Position = 0;
+                bw.StringLengthMode = lengthMode;
 
-            TestSys.Write($"l{str.Length} b{bw.Position} ");
-            bw.Position = 0;
-            string result = br.ReadString(lengthPrefix, encoding);
+                TestSys.ExpectException<ArgumentException>(expectException, () =>
+                {
+                    bw.WriteString(str, lengthPrefix, encoding);
 
-            TestSys.AssertValueIsEqual(result, str);
+                    bw.WriteInt32(postcheck);
+                });
+
+                TestSys.Write($"l{str.Length} b{bw.Position} ");
+            }
+
+            using (var br = data.Reader)
+            {
+                br.Position = 0;
+                br.StringLengthMode = lengthMode;
+                string result = br.ReadString(lengthPrefix, encoding);
+
+                TestSys.AssertValueIsEqual(result, str);
+
+                TestSys.AssertValueIsEqual(br.ReadInt32(), postcheck);
+            }
 
             TestSys.Succes();
             return TestResult.Success;

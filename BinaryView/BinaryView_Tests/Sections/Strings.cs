@@ -7,17 +7,25 @@ partial class Section
 #pragma warning disable SYSLIB0001
         TestSys.WriteTitle("test string");
 
-        Tests.WriteReadString("TestString123", LengthPrefix.Int32, Encoding.UTF8);
-        Tests.WriteReadString("TestString123", LengthPrefix.Byte, Encoding.UTF8);
-        Tests.WriteReadString("TestString123", LengthPrefix.UInt32, Encoding.UTF32);
-        Tests.WriteReadString("TestString123", LengthPrefix.UInt32, Encoding.ASCII);
-        Tests.WriteReadString("TestString123", LengthPrefix.UInt32, Encoding.Unicode);
+        Tests.WriteReadString("TestString123", LengthPrefix.Int32, StringLengthMode.ByteCount, Encoding.UTF8);
+        Tests.WriteReadString("TestString123", LengthPrefix.Byte, StringLengthMode.ByteCount, Encoding.UTF8);
+        Tests.WriteReadString("TestString123", LengthPrefix.UInt32, StringLengthMode.ByteCount, Encoding.UTF32);
+        Tests.WriteReadString("TestString123", LengthPrefix.UInt32, StringLengthMode.ByteCount, Encoding.ASCII);
+        Tests.WriteReadString("TestString123", LengthPrefix.UInt32, StringLengthMode.ByteCount, Encoding.Unicode);
 #if NETCOREAPP2_1_OR_GREATER
-        Tests.WriteReadString("TestString123", LengthPrefix.UInt32, Encoding.Latin1);
+        Tests.WriteReadString("TestString123", LengthPrefix.UInt32, StringLengthMode.ByteCount, Encoding.Latin1);
 #endif
-        Tests.WriteReadString("Ä'*Ü-.,><%§ÃoÜ╝ô○╝+", LengthPrefix.UInt32, Encoding.ASCII, true);
-        Tests.WriteReadString("Ä'*Ü-.,><%§ÃoÜ╝ô○╝+", LengthPrefix.UInt32, Encoding.UTF8);
-        Tests.WriteReadString("Ä'*Ü-.,><%§ÃoÜ╝ô○╝+", LengthPrefix.UInt32, Encoding.Unicode);
+        Tests.WriteReadString("Ä'*Ü-.,><%§ÃoÜ╝ô○╝+", LengthPrefix.UInt32, StringLengthMode.ByteCount, Encoding.ASCII, true);
+        Tests.WriteReadString("Ä'*Ü-.,><%§ÃoÜ╝ô○╝+", LengthPrefix.UInt32, StringLengthMode.ByteCount, Encoding.UTF8);
+        Tests.WriteReadString("Ä'*Ü-.,><%§ÃoÜ╝ô○╝+", LengthPrefix.UInt32, StringLengthMode.ByteCount, Encoding.Unicode);
+
+        Tests.WriteReadString("TestString123", LengthPrefix.Int32, StringLengthMode.CharCount, Encoding.ASCII);
+        Tests.WriteReadString("TestString123", LengthPrefix.Int32, StringLengthMode.CharCount, Encoding.UTF8);
+
+        Tests.WriteReadString("Ä'*Ü-.,><%§ÃoÜ╝ô○╝+", LengthPrefix.UInt32, StringLengthMode.CharCount, Encoding.ASCII, true);
+        Tests.WriteReadString("Ä'*Ü-.,><%§ÃoÜ╝ô○╝+", LengthPrefix.UInt32, StringLengthMode.CharCount, Encoding.UTF8);
+        Tests.WriteReadString("Ä'*Ü-.,><%§ÃoÜ╝ô○╝+", LengthPrefix.UInt32, StringLengthMode.CharCount, Encoding.Unicode);
+        Tests.WriteReadString("Ä'*Ü-.,><%§ÃoÜ╝ô○╝+", LengthPrefix.UInt32, StringLengthMode.CharCount, Encoding.UTF32);
 
         Tests.WriteReadCString("TestString123", Encoding.UTF7);
         Tests.WriteReadCString("TestString123", Encoding.UTF8);

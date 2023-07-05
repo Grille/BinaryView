@@ -8,12 +8,13 @@ using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Runtime.CompilerServices;
 using GGL.IO.Compression;
+using System.Runtime.InteropServices.ComTypes;
 
 namespace GGL.IO;
 
-public class BinaryViewReader : StreamStackUser
+public sealed class BinaryViewReader : StreamStackUser
 {
-    public long LengthPrefixMaxValue = long.MaxValue;
+    public long LengthPrefixMaxValue { get; set; } = long.MaxValue;
 
 
     /// <summary>Initialize BinaryView with a empty MemoryStream</summary>
@@ -119,6 +120,11 @@ public class BinaryViewReader : StreamStackUser
         ReadToPtr((byte*)ptr + offset, size);
     }
 
+    public unsafe void ReadToPtr(IntPtr ptr, int size, int offset)
+    {
+        ReadToPtr((byte*)ptr + offset, size);
+    }
+
     public T ReadIView<T>() where T : IViewReadable, new()
     {
         return ReadToIView(new T());
@@ -166,10 +172,10 @@ public class BinaryViewReader : StreamStackUser
     /// <summary>Reads a array of unmanaged structs from the stream and increases the position by the size of the array elements, get amount of elements from prefix</summary>
     /// <typeparam name="T"></typeparam> Type of unmanaged struct
     /// <param name="list">Pointer to existing list to write in</param>
-    public unsafe void ReadToIList<T>(IList<T> list, LengthPrefix lengthPrefix = LengthPrefix.Default) where T : unmanaged
+    public unsafe IList<T> ReadToIList<T>(IList<T> list, LengthPrefix lengthPrefix = LengthPrefix.Default) where T : unmanaged
     {
         long length = ReadLengthPrefix(lengthPrefix);
-        ReadToIList(list, 0, length);
+        return ReadToIList(list, 0, length);
     }
 
     /// <summary>Reads a list of unmanaged structs from the stream and increases the position by the size of the array elements, reads no length prefix</summary>
@@ -177,7 +183,7 @@ public class BinaryViewReader : StreamStackUser
     /// <param name="dstList">Pointer to existing list to write in</param>
     /// <param name="offset">Offset in list</param>
     /// <param name="count">Amount of elements to read</param>
-    public unsafe void ReadToIList<T>(IList<T> dstList, int offset, long count) where T : unmanaged
+    public unsafe IList<T> ReadToIList<T>(IList<T> dstList, int offset, long count) where T : unmanaged
     {
         for (int i = 0; i < count; i++)
         {
@@ -188,16 +194,18 @@ public class BinaryViewReader : StreamStackUser
             else
                 dstList[idx] = item;
         }
+
+        return dstList;
     }
 
     /// <summary>Reads a list of unmanaged structs from the stream and increases the position by the size of the array elements, reads no length prefix</summary>
     /// <typeparam name="T"></typeparam> Type of unmanaged struct
     /// <param name="dstList">Pointer to existing list to write in</param>
     /// <param name="offset">Offset in dstList</param>
-    public unsafe void ReadRemainderToIList<T>(IList<T> dstList, int offset) where T : unmanaged
+    public unsafe IList<T> ReadRemainderToIList<T>(IList<T> dstList, int offset) where T : unmanaged
     {
         long count = Remaining / sizeof(T);
-        ReadToIList(dstList, offset, count);
+        return ReadToIList(dstList, offset, count);
     }
 
     /// <summary>Reads remaining bytes</summary>
@@ -258,19 +266,51 @@ public class BinaryViewReader : StreamStackUser
         return ReadString(length, encoding);
     }
 
-    private string GetEncodingString(byte[] bytes, Encoding encoding)
+    public string ReadString(long length, Encoding encoding = null)
     {
         if (encoding == null)
             encoding = Encoding;
 
-        return encoding.GetString(bytes);
-    }
+        if (StringLengthMode == StringLengthMode.CharCount)
+        {
+            if (encoding.IsSingleByte)
+            {
+                var bytes = ReadArray<byte>(length);
+                return encoding.GetString(bytes);
+            }
+            else if (encoding == Encoding.Unicode)
+            {
+                var bytes = ReadArray<byte>(length * 2);
+                return encoding.GetString(bytes);
+            }
+            else if (encoding == Encoding.UTF32)
+            {
+                var bytes = ReadArray<byte>(length * 4);
+                return encoding.GetString(bytes);
+            }
+            else
+            {
+                int maxbyte = Math.Min(encoding.GetMaxByteCount((int)length), (int)Remaining);
+                var bytes = ReadArray<byte>(maxbyte);
+                var chars = encoding.GetChars(bytes);
 
-    public string ReadString(long length, Encoding encoding = null)
-    {
-        var bytes = ReadArray<byte>(length);
+                if (chars.Length < length)
+                    throw new InvalidDataException();
 
-        return GetEncodingString(bytes, encoding);
+                var str = new string(chars, 0, (int)length);
+                int bytecount = encoding.GetByteCount(str);
+
+                int diff = maxbyte - bytecount;
+                PeakStream.Seek(-diff, SeekOrigin.Current);
+
+                return str;
+            }
+        }
+        else
+        {
+            var bytes = ReadArray<byte>(length);
+            return encoding.GetString(bytes);
+        }
     }
 
     public string ReadTerminatedString(Encoding encoding = null)
@@ -283,15 +323,16 @@ public class BinaryViewReader : StreamStackUser
             bytes.Add(b);
         }
 
-        return GetEncodingString(bytes.ToArray(), encoding);
+        return encoding.GetString(bytes.ToArray());
     }
 
     /// <summary>Reads a array of string from the stream</summary>
     public string[] ReadStringArray(LengthPrefix arrayPrefix = LengthPrefix.Default, LengthPrefix stringPrefix = LengthPrefix.Default)
     {
+        var encoding = Encoding;
         long length = ReadLengthPrefix(arrayPrefix);
         string[] retData = new string[length];
-        for (int i = 0; i < retData.Length; i++) retData[i] = ReadString(stringPrefix);
+        for (int i = 0; i < retData.Length; i++) retData[i] = ReadString(stringPrefix, encoding);
         return retData;
     }
 

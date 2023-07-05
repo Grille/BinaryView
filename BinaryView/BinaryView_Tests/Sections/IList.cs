@@ -14,6 +14,27 @@ partial class Section
         for (int i = 0; i < size; i++)
             data0[i] = (byte)(rnd.NextDouble() * 255f);
 
+        TestSys.RunTest("Read new List", () =>
+        {
+            using var test = new TestData();
+            var bw = test.Writer;
+            var br = test.Reader;
+
+            //setup
+            bw.WriteIList(data0);
+            test.ResetPos();
+
+            //read
+
+            var list = br.ReadToIList(new byte[data0.Length]);
+
+            TestSys.AssertIListIsEqual(data0, list);
+
+
+            TestSys.WriteSucces($"OK");
+            return TestResult.Success;
+        });
+
         TestSys.RunTest("Read to new List", () =>
         {
             using var test = new TestData();

@@ -11,6 +11,12 @@ public enum ViewMode
     Write,
 }
 
+public enum StringLengthMode
+{
+    ByteCount,
+    CharCount,
+}
+
 public enum LengthPrefix 
 {
     /// <summary>Uses defult length-prefix of object</summary>

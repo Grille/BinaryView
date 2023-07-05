@@ -43,6 +43,8 @@ public abstract class StreamStackUser : IDisposable
         }
     }
 
+    public StringLengthMode StringLengthMode { get; set; }
+
     /// <summary>
     /// Size of buffer for write and read operations, grows dynamically.
     /// </summary>

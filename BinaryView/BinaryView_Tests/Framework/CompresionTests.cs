@@ -72,7 +72,7 @@ internal class CompresionTests
             {
                 bw.WriteArray(data0);
             }
-            bw.EndCompressedSection();
+            var c = bw.EndCompressedSection();
 
 
             TestSys.AssertValueIsNotEqual(data.PopPos(), 0, $"FAIL file length is 0");

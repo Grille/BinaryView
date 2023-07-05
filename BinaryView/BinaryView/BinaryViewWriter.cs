@@ -12,11 +12,11 @@ using GGL.IO.Compression;
 
 namespace GGL.IO;
 
-public class BinaryViewWriter : StreamStackUser
+public sealed class BinaryViewWriter : StreamStackUser
 {
-    public bool ValidateLengthPrefix = true;
-    public bool ValidateEncoding = true;
-    public bool ValidateTerminatedString = true;
+    public bool ValidateLengthPrefix { get; set; } = true;
+    public bool ValidateEncoding { get; set; } = false;
+    public bool ValidateTerminatedString { get; set; } = true;
 
     /// <summary>Initialize BinaryView with a empty MemoryStream</summary>
     public BinaryViewWriter() :
@@ -80,6 +80,11 @@ public class BinaryViewWriter : StreamStackUser
     }
 
     public unsafe void WriteFromPtr(void* ptr, int size, int offset)
+    {
+        WriteFromPtr((byte*)ptr + offset, size);
+    }
+
+    public unsafe void WriteFromPtr(IntPtr ptr, int size, int offset)
     {
         WriteFromPtr((byte*)ptr + offset, size);
     }
@@ -198,7 +203,12 @@ public class BinaryViewWriter : StreamStackUser
     {
         var bytes = GetEncodingBytes(input, encoding);
 
-        WriteArray(bytes, lengthPrefix);
+        if (StringLengthMode == StringLengthMode.CharCount)
+            WriteLengthPrefix(lengthPrefix, input.Length);
+        else
+            WriteLengthPrefix(lengthPrefix, bytes.Length);
+
+        WriteArray(bytes, LengthPrefix.None);
     }
 
     /// <summary>
@@ -214,7 +224,7 @@ public class BinaryViewWriter : StreamStackUser
         if (ValidateTerminatedString)
             for (int i = 0; i < bytes.Length; i++)
                 if (bytes[i] == 0)
-                    throw new ArgumentException($"Unexpected null terminator found at {i}/{bytes.Length} in string.");
+                    throw new ArgumentException($"Unexpected null terminator found at {i}/{bytes.Length-1} in string.", nameof(input));
 
         WriteArray(bytes, LengthPrefix.None);
         WriteByte(0);
@@ -238,7 +248,7 @@ public class BinaryViewWriter : StreamStackUser
         LengthPrefix.Int32 => length == (int)length,
         LengthPrefix.UInt32 => length == (uint)length,
         LengthPrefix.Int64 => true,
-        LengthPrefix.UInt64 => length == (long)(ulong)length,
+        LengthPrefix.UInt64 => length >= 0,
         LengthPrefix.Single => length == (long)(float)length,
         LengthPrefix.Double => length == (long)(double)length,
         LengthPrefix.UIntSmart15 => length == (long)(UIntSmart15)length,

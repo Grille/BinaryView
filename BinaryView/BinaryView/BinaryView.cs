@@ -4,7 +4,7 @@ using System.Text;
 using System.IO;
 
 namespace GGL.IO;
-public class BinaryView : StreamStackUser
+public sealed class BinaryView : StreamStackUser
 {
     public readonly BinaryViewWriter Writer;
     public readonly BinaryViewReader Reader;
@@ -37,6 +37,9 @@ public class BinaryView : StreamStackUser
         Writer = writer;
         Mode = ViewMode.Write;
     }
+
+    public static implicit operator BinaryViewReader(BinaryView view) => view.Reader;
+    public static implicit operator BinaryViewWriter(BinaryView view) => view.Writer;
 
     public static implicit operator BinaryView(BinaryViewReader reader) => new(reader);
     public static implicit operator BinaryView(BinaryViewWriter writer) => new(writer);

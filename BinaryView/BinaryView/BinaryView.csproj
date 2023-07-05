@@ -8,11 +8,11 @@
         <Description>Classes to easily write and read binary data from streams</Description>
         <PackageLicenseExpression></PackageLicenseExpression>
         <FileVersion>1.0</FileVersion>
-        <AssemblyVersion>2.4.1</AssemblyVersion>
+        <AssemblyVersion>2.4.2</AssemblyVersion>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
         <PackageId>GGL.BinaryView</PackageId>
         <SignAssembly>false</SignAssembly>
-        <Version>2.4.1</Version>
+        <Version>2.4.2</Version>
         <RepositoryUrl>https://github.com/Grille/BinaryView</RepositoryUrl>
         <PackageTags />
         <EnableNETAnalyzers>False</EnableNETAnalyzers>

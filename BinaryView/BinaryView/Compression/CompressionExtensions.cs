@@ -15,48 +15,49 @@ public static class CompressionExtensions
     }
 
     /// <summary>Decompress data with CompressionStream, position will reset</summary>
-    public static StreamStackEntry BeginCompressedSection(this BinaryViewReader br, CompressionType type, LengthPrefix lengthPrefix = LengthPrefix.Default)
+    public static DecompressorStackEntry BeginCompressedSection(this BinaryViewReader br, CompressionType type, LengthPrefix lengthPrefix = LengthPrefix.Default)
     {
         long length = br.ReadLengthPrefix(lengthPrefix);
         return br.BeginCompressedSection(type, length);
     }
 
-    public static StreamStackEntry BeginCompressedSection(this BinaryViewReader br, CompressionType type, long length)
+    public static DecompressorStackEntry BeginCompressedSection(this BinaryViewReader br, CompressionType type, long length)
     {
-        br.StreamStack.Push(new DecompressorStackEntry(br, type, length));
-        return br.StreamStack.Peak;
+        var entry = new DecompressorStackEntry(br, type, length);
+        br.StreamStack.Push(entry);
+        return entry;
     }
 
-    public static void EndCompressedSection(this BinaryViewReader br)
+    public static DecompressorStackEntry EndCompressedSection(this BinaryViewReader br)
     {
-        var entry = br.StreamStack.Pop();
-        if (entry is not DecompressorStackEntry)
-            throw new InvalidOperationException();
+        var entry = (DecompressorStackEntry)br.StreamStack.Pop();
         entry.Dispose();
+        return entry;
     }
 
     // Write
     /// <summary>All Data after this will be writen as compressed</summary>
     public static void CompressAll(this BinaryViewWriter bw, CompressionType type, CompressionLevel level = CompressionLevel.Optimal)
     {
-        bw.StreamStack.Push(new CompressorStackEntry(bw, type, level));
+        var entry = new CompressorStackEntry(bw, type, level);
+        bw.StreamStack.Push(entry);
     }
 
-    public static StreamStackEntry BeginCompressedSection(this BinaryViewWriter bw, CompressionType type, LengthPrefix lengthPrefix = LengthPrefix.Default)
+    public static CompressorStackEntry BeginCompressedSection(this BinaryViewWriter bw, CompressionType type, LengthPrefix lengthPrefix = LengthPrefix.Default)
         => BeginCompressedSection(bw, type, CompressionLevel.Optimal, lengthPrefix);
 
-    public static StreamStackEntry BeginCompressedSection(this BinaryViewWriter bw, CompressionType type, CompressionLevel level, LengthPrefix lengthPrefix = LengthPrefix.Default)
+    public static CompressorStackEntry BeginCompressedSection(this BinaryViewWriter bw, CompressionType type, CompressionLevel level, LengthPrefix lengthPrefix = LengthPrefix.Default)
     {
-        bw.StreamStack.Push(new CompressorStackEntry(bw, type, level, lengthPrefix));
-        return bw.StreamStack.Peak;
+        var entry = new CompressorStackEntry(bw, type, level, lengthPrefix);
+        bw.StreamStack.Push(entry);
+        return entry;
     }
 
-    public static void EndCompressedSection(this BinaryViewWriter bw)
+    public static CompressorStackEntry EndCompressedSection(this BinaryViewWriter bw)
     {
-        var entry = bw.StreamStack.Pop();
-        if (entry is not CompressorStackEntry)
-            throw new InvalidOperationException();
+        var entry = (CompressorStackEntry)bw.StreamStack.Pop();
         entry.Dispose();
+        return entry;
     }
 
     // view
