@@ -53,7 +53,7 @@ public class StreamStack : IDisposable
     public void Push(StreamStackEntry entry)
     {
         if (entry.Owner != this)
-            throw new ArgumentException("Owner not this.");
+            throw new ArgumentException("Entry not owned by not this stack.", nameof(entry));
 
         _stack.Push(entry);
         Peak = entry;
@@ -62,18 +62,12 @@ public class StreamStack : IDisposable
     /// <inheritdoc/>
     public StreamStackEntry Pop()
     {
-        //if (Count <= 1)
-        //    throw new InvalidOperationException("Only 1 element left, can't empty stack");
+        if (Count <= 1)
+            throw new InvalidOperationException("Only 1 element left, can't pop base stream.");
 
         var entry = _stack.Pop();
-        if (Count > 0)
-        {
-            Peak = Peek();
-        }
-        else
-        {
-            Peak = null!;
-        }
+        Peak = Peek();
+
         return entry;
     }
 
@@ -124,25 +118,22 @@ public class StreamStack : IDisposable
     {
         if (!disposedValue)
         {
-            while (Count > 0)
+            while (Count > 1)
             {
-                var stream = Pop();
+                var stream = _stack.Pop();
+                Peak = Peek();
                 stream.Dispose();
             }
+            Peak = null!;
+            _stack.Pop().Dispose();
 
             disposedValue = true;
         }
     }
 
-    ~StreamStack()
-    {
-        Dispose(false);
-    }
-
     public void Dispose()
     {
         Dispose(true);
-        GC.SuppressFinalize(this);
     }
     #endregion
 }

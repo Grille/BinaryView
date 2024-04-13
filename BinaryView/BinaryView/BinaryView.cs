@@ -10,6 +10,7 @@ public sealed class BinaryView : StreamStackUser
 
     readonly BinaryViewWriter? _writer;
     readonly BinaryViewReader? _reader;
+
     public BinaryViewWriter Writer { get => _writer != null ? _writer : throw new NotSupportedException("BinaryView not in write mode."); }
     public BinaryViewReader Reader { get => _reader != null ? _reader : throw new NotSupportedException("BinaryView not in read mode."); }
 
