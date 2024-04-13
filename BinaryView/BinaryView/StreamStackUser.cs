@@ -10,36 +10,33 @@ public abstract class StreamStackUser : IDisposable
 {
     protected byte[] Buffer { get; private set; }
 
-    private IFormatter _formatter = new BinaryFormatter();
     private Encoding _encoding = Encoding.Default;
     private int _bufferSize = 0;
     private LengthPrefix _lengthPrefix = LengthPrefix.UInt32;
-    private Endianness _bitOrder = Endianness.Default;
-    private Endianness _byteOrder = Endianness.Default;
+    private Endianness _byteOrder = Endianness.System;
 
     protected bool NeedBitReorder { get; private set; } = false;
     protected bool NeedByteReorder { get; private set; } = false;
     protected bool NeedReorder { get; private set; } = false;
 
-    public Endianness BitOrder
+    public bool ReverseBitsPerByte
     {
-        get => _bitOrder;
+        get => NeedBitReorder;
         set
         {
-            _bitOrder = value;
-            NeedBitReorder = _bitOrder != Endianness.Default;
-            NeedReorder = _bitOrder != Endianness.Default || _byteOrder != Endianness.Default;
+            NeedBitReorder = value;
+            NeedReorder = NeedByteReorder || NeedBitReorder;
         }
     }
 
-    public Endianness ByteOrder
+    public Endianness Endianness
     {
-        get => _bitOrder;
+        get => _byteOrder;
         set
         {
             _byteOrder = value;
-            NeedByteReorder = _byteOrder != Endianness.Default;
-            NeedReorder = _bitOrder != Endianness.Default || _byteOrder != Endianness.Default;
+            NeedByteReorder = EndianUtils.NeedByteReorder(_byteOrder);
+            NeedReorder = NeedByteReorder || NeedBitReorder;
         }
     }
 
@@ -55,20 +52,6 @@ public abstract class StreamStackUser : IDisposable
         {
             _bufferSize = value;
             Buffer = new byte[_bufferSize];
-        }
-    }
-
-    /// <summary>
-    /// Formatter used by Serialize, if not specified as parameter.
-    /// </summary>
-    public IFormatter Formatter
-    {
-        get => _formatter;
-        set
-        {
-            if (value == null)
-                throw new ArgumentNullException(nameof(value));
-            _formatter = value;
         }
     }
 
@@ -100,7 +83,7 @@ public abstract class StreamStackUser : IDisposable
         }
     }
 
-    public readonly StreamStack StreamStack;
+    public StreamStack StreamStack { get; }
 
     public Stream PeakStream => StreamStack.Peak.Stream; 
 
@@ -123,12 +106,18 @@ public abstract class StreamStackUser : IDisposable
     /// </summary>
     public long Remaining => Length - Position;
 
-    public StreamStackUser(StreamStack stack, int bufferSize = 16)
+    public StreamStackUser(StreamStack stack) : this(stack, 16) { }
+
+    public StreamStackUser(StreamStack stack, int bufferSize)
     {
         StreamStack = stack;
-        if (bufferSize > 0)
+        if (bufferSize >= 0)
         {
             BufferSize = bufferSize;
+        }
+        if (Buffer == null)
+        {
+            throw new ArgumentException("bufferSize must be >= 0", nameof(bufferSize));
         }
     }
 

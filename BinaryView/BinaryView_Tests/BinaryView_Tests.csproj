@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" Version="0.13.1" />
+    <PackageReference Include="Grille.ConsoleTestLib" Version="0.5.0" />
   </ItemGroup>
 
   <ItemGroup>

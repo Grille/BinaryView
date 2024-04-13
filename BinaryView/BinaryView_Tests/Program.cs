@@ -7,10 +7,19 @@ namespace BinaryView_Tests;
 
 class Program
 {
+
+
+
     static unsafe void Main(string[] args)
     {
-        TestSys.CatchExeptions = false;
+        var sw = Stopwatch.StartNew();
 
+        Printer = new StandardConsolePrinter()
+        {
+            PrintFailAsException = false,
+        };
+
+        Section.CreateDispose();
         Section.PrimitiveTypes();
         Section.GenericTypes();
         Section.Endianness();
@@ -24,10 +33,7 @@ class Program
         Section.Combined();
         Section.Map();
 
-        TestSys.WriteResults();
-
-        Console.WriteLine();
-        //BenchmarkRunner.Run<Benchmarks>();
+        RunTestsSynchronously();
     }
 }
 

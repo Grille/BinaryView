@@ -7,7 +7,7 @@ partial class Section
 {
     public static void Compresion()
     {
-        TestSys.WriteTitle("test compresion");
+        Section("test compresion");
 
         new CompresionTests("Deflate", CompressionType.Deflate).Run();
         new CompresionTests("GZip", CompressionType.GZip).Run();

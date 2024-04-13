@@ -92,7 +92,7 @@ public struct UIntSmart62 : IViewObject
         var prefix = bytes[0] & 0b0000_0011;
 
         if (prefix > 0)
-            br.ReadToIList(bytes, 1, (1 << prefix) - 1);
+            br.ReadToArray(bytes, (1 << prefix) - 1, 1);
 
         value = (long)(BitConverter.ToUInt64(bytes, 0) >> 2);
     }

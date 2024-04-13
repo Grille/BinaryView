@@ -36,7 +36,7 @@ internal class CompresionTests
 
         byte[] rdata0, rdata1, rdata2;
 
-        TestSys.RunTest($"{Name} Section", () =>
+        Test($"{Name} Section", () =>
             {
                 using var data = new TestData();
                 var bw = data.Writer;
@@ -48,21 +48,20 @@ internal class CompresionTests
                 }
 
 
-                TestSys.AssertValueIsNotEqual(data.PopPos(), 0, $"FAIL file length is 0");
+                AssertVirtualFileWasWriten(data);
 
 
                 using (br.BeginCompressedSection(Type))
                 {
                     rdata0 = br.ReadArray<byte>();
-                    TestSys.AssertIListIsEqual(data0, rdata0);
+                    AssertIListIsEqual(data0, rdata0);
                 }
 
 
-                TestSys.Succes($"{data.Position}b");
-                return TestResult.Success;
+                Succes($"{data.Position}b");
             });
 
-        TestSys.RunTest($"{Name} Section (non using)", () =>
+        Test($"{Name} Section (non using)", () =>
         {
             using var data = new TestData();
             var bw = data.Writer;
@@ -75,22 +74,21 @@ internal class CompresionTests
             var c = bw.EndCompressedSection();
 
 
-            TestSys.AssertValueIsNotEqual(data.PopPos(), 0, $"FAIL file length is 0");
+            AssertVirtualFileWasWriten(data);
 
 
             br.BeginCompressedSection(Type);
             {
                 rdata0 = br.ReadArray<byte>();
-                TestSys.AssertIListIsEqual(data0, rdata0);
+                AssertIListIsEqual(data0, rdata0);
             }
             br.EndCompressedSection();
 
 
-            TestSys.Succes($"{data.Position}b");
-            return TestResult.Success;
+            Succes($"{data.Position}b");
         });
 
-        TestSys.RunTest($"{Name} Empty Section", () =>
+        Test($"{Name} Empty Section", () =>
         {
             using var data = new TestData();
             var bw = data.Writer;
@@ -101,19 +99,18 @@ internal class CompresionTests
             bw.WriteArray(data0);
 
 
-            TestSys.AssertValueIsNotEqual(data.PopPos(), 0, $"FAIL file length is 0");
+            AssertVirtualFileWasWriten(data);
 
 
             using (br.BeginCompressedSection(Type)) { }
             rdata0 = br.ReadArray<byte>();
-            TestSys.AssertIListIsEqual(data0, rdata0);
+            AssertIListIsEqual(data0, rdata0);
 
 
-            TestSys.Succes($"{data.Position}b");
-            return TestResult.Success;
+            Succes($"{data.Position}b");
         });
 
-        TestSys.RunTest($"{Name} 2 Sections Sequential", () =>
+        Test($"{Name} 2 Sections Sequential", () =>
         {
             using var data = new TestData();
             var bw = data.Writer;
@@ -133,31 +130,30 @@ internal class CompresionTests
             }
 
 
-            TestSys.AssertValueIsNotEqual(data.PopPos(), 0, $"FAIL file length is 0");
+            AssertVirtualFileWasWriten(data);
 
 
             using (br.BeginCompressedSection(Type))
             {
                 rdata0 = br.ReadArray<byte>();
-                TestSys.AssertIListIsEqual(data0, rdata0);
+                AssertIListIsEqual(data0, rdata0);
             }
-            TestSys.AssertEndOfStream(data.Stream, false);
+            AssertIsNotEndOfStream(data.Stream);
 
             rdata1 = br.ReadArray<byte>();
-            TestSys.AssertIListIsEqual(data1, rdata1);
+            AssertIListIsEqual(data1, rdata1);
 
             using (br.BeginCompressedSection(Type))
             {
                 rdata2 = br.ReadArray<byte>();
-                TestSys.AssertIListIsEqual(data2, rdata2);
+                AssertIListIsEqual(data2, rdata2);
             }
 
 
-            TestSys.Succes($"{data.Position}b");
-            return TestResult.Success;
+            Succes($"{data.Position}b");
         });
 
-        TestSys.RunTest($"{Name} 2 Sections Nested", () =>
+        Test($"{Name} 2 Sections Nested", () =>
         {
             using var data = new TestData();
             var bw = data.Writer;
@@ -176,28 +172,27 @@ internal class CompresionTests
             }
 
 
-            TestSys.AssertValueIsNotEqual(data.PopPos(), 0, $"FAIL file length is 0");
+            AssertVirtualFileWasWriten(data);
 
 
             rdata0 = br.ReadArray<byte>();
-            TestSys.AssertIListIsEqual(data0, rdata0);
+            AssertIListIsEqual(data0, rdata0);
             using (br.BeginCompressedSection(Type))
             {
                 rdata1 = br.ReadArray<byte>();
-                TestSys.AssertIListIsEqual(data1, rdata1);
+                AssertIListIsEqual(data1, rdata1);
                 using (br.BeginCompressedSection(Type))
                 {
                     rdata2 = br.ReadArray<byte>();
-                    TestSys.AssertIListIsEqual(data2, rdata2);
+                    AssertIListIsEqual(data2, rdata2);
                 }
             }
 
 
-            TestSys.Succes($"{data.Position}b");
-            return TestResult.Success;
+            Succes($"{data.Position}b");
         });
 
-        TestSys.RunTest($"{Name} All", () =>
+        Test($"{Name} All", () =>
         {
             using var data = new TestData();
 
@@ -207,21 +202,20 @@ internal class CompresionTests
                 bw.WriteArray(data0);
             }
 
-            TestSys.AssertValueIsNotEqual(data.PopPos(), 0, $"FAIL file length is 0");
+            AssertVirtualFileWasWriten(data);
 
             using (var br = data.Reader)
             {
                 br.CompressAll(Type);
                 rdata0 = br.ReadArray<byte>();
-                TestSys.AssertIListIsEqual(data0, rdata0);
+                AssertIListIsEqual(data0, rdata0);
             }
 
 
-            TestSys.Succes($"{data.Position}b");
-            return TestResult.Success;
+            Succes($"{data.Position}b");
         });
 
-        TestSys.RunTest($"{Name} All after Head", () =>
+        Test($"{Name} All after Head", () =>
         {
             using var data = new TestData();
 
@@ -232,20 +226,18 @@ internal class CompresionTests
                 bw.WriteArray(data1);
             }
 
-            TestSys.AssertValueIsNotEqual(data.PopPos(), 0, $"FAIL file length is 0");
+            AssertVirtualFileWasWriten(data);
 
             using (var br = data.Reader)
             {
                 rdata0 = br.ReadArray<byte>();
-                TestSys.AssertIListIsEqual(data0, rdata0);
+                AssertIListIsEqual(data0, rdata0);
                 br.CompressAll(Type);
                 rdata1 = br.ReadArray<byte>();
-                TestSys.AssertIListIsEqual(data1, rdata1);
+                AssertIListIsEqual(data1, rdata1);
             }
 
-
-            TestSys.Succes($"{data.Position}b");
-            return TestResult.Success;
+            Succes($"{data.Position}b");
         });
     }
 }

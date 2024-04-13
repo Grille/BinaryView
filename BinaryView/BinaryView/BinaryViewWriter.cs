@@ -14,15 +14,39 @@ namespace GGL.IO;
 
 public sealed class BinaryViewWriter : StreamStackUser
 {
+    /// <summary>
+    /// Gets or Sets a value indicating whether to ensure that the writen value fits in the <see cref="LengthPrefix"/> type range.<br/>
+    /// Default value is <c>true</c>
+    /// </summary>
+    /// <remarks>
+    /// If undetected, this will corrupt your stream, attempts to later read any data after will probably fail.
+    /// </remarks>
     public bool ValidateLengthPrefix { get; set; } = true;
+
+    /// <summary>
+    /// Gets or Sets a value indicating whether  that the string will still be the same when read again with the same encoding.<br/>
+    /// Default value is <c>false</c>
+    /// </summary>
+    /// <remarks>
+    /// This check is relatively expensive and is only useful when using Encodings with a limited character set like <see cref="Encoding.ASCII"/>.<br/>
+    /// A failure here will not result in a corrupted stream, only the string will be broken.
+    /// </remarks>
     public bool ValidateEncoding { get; set; } = false;
+
+    /// <summary>
+    /// Gets or Sets a value indicating whether <c>WriteTerminatedString</c> should check, if the string contains escape characters.<br/>
+    /// Default value is <c>true</c>
+    /// </summary>
+    /// <remarks>
+    /// If undetected, this will corrupt your stream, attempts to later read this string or any data after will probably fail.
+    /// </remarks>
     public bool ValidateTerminatedString { get; set; } = true;
 
-    /// <summary>Initialize BinaryView with a empty MemoryStream</summary>
+    /// <summary>Initialize BinaryView with a new empty <see cref="MemoryStream"/></summary>
     public BinaryViewWriter() :
         this(new StreamStack(new MemoryStream(), false))
     { }
-    /// <summary>Initialize BinaryView with a FileStream</summary>
+    /// <summary>Initialize BinaryView with a new <see cref="FileStream"/></summary>
     /// <param name="path">File path</param>
     public BinaryViewWriter(string path) :
         this(new StreamStack(new FileStream(path, FileMode.Create, FileAccess.Write), false))
@@ -95,33 +119,28 @@ public sealed class BinaryViewWriter : StreamStackUser
         obj.WriteToView(this);
     }
 
-    /// <inheritdoc cref="IFormatter.Serialize(Stream, object)"/>
-    [Obsolete]
-    public void Serialize<T>(T obj)
-    {
-        Serialize(obj, Formatter);
-    }
-
-    /// <inheritdoc cref="IFormatter.Serialize(Stream, object)"/>
-    [Obsolete]
-    public void Serialize<T>(T obj, IFormatter formatter)
-    {
-        formatter.Serialize(PeakStream, obj);
-    }
-
     /// <summary>Writes a array of unmanaged structs into the stream and increases the position by the size of the array elements, add prefix for length</summary>
     /// <typeparam name="T"></typeparam> Type of unmanaged struct
     /// <param name="array">Array of unmanaged structs to write</param>
-    public void WriteArray<T>(T[] array, LengthPrefix lengthPrefix = LengthPrefix.Default) where T : unmanaged
+    public void WriteArray<T>(T[] array) where T : unmanaged => WriteArray(array, LengthPrefix);
+
+    /// <inheritdoc cref="WriteArray{T}(T[])"></inheritdoc>
+    /// <typeparam name="T"></typeparam> Type of unmanaged struct
+    /// <param name="array">Array of unmanaged structs to write</param>
+    /// <param name="lengthPrefix"></param>
+    public void WriteArray<T>(T[] array, LengthPrefix lengthPrefix) where T : unmanaged
     {
         WriteLengthPrefix(lengthPrefix, array.Length);
         for (int i = 0; i < array.Length; i++) Write(array[i]);
     }
 
+    public void WriteIList<T>(IList<T> list) where T : unmanaged => WriteIList(list, LengthPrefix);
+
     /// <summary>Writes a list of unmanaged structs into the stream and increases the position by the size of the array elements, add prefix for length</summary>
     /// <typeparam name="T"></typeparam> Type of unmanaged struct
     /// <param name="list">Array of unmanaged structs to write</param>
-    public void WriteIList<T>(IList<T> list, LengthPrefix lengthPrefix = LengthPrefix.Default) where T : unmanaged
+    /// <param name="lengthPrefix"></param>
+    public void WriteIList<T>(IList<T> list, LengthPrefix lengthPrefix) where T : unmanaged
     {
         WriteLengthPrefix(lengthPrefix, list.Count);
         for (int i = 0; i < list.Count; i++) Write(list[i]);
@@ -135,6 +154,17 @@ public sealed class BinaryViewWriter : StreamStackUser
     public void WriteIList<T>(IList<T> list, int offset, int count) where T : unmanaged
     {
         for (int i = 0; i < count; i++) Write(list[i + offset]);
+    }
+
+    public void WriteICollection<T>(ICollection<T> collection) where T : unmanaged => WriteICollection(collection, LengthPrefix);
+
+    public void WriteICollection<T>(ICollection<T> collection, LengthPrefix lengthPrefix) where T : unmanaged
+    {
+        WriteLengthPrefix(lengthPrefix, collection.Count);
+        foreach (var item in collection)
+        {
+            Write(item);
+        }
     }
 
     /// <summary>Writes a bool to the stream and increases the position by one byte</summary>
@@ -198,8 +228,10 @@ public sealed class BinaryViewWriter : StreamStackUser
             return encoding.GetBytes(input);
     }
 
+    public void WriteString(string input) => WriteString(input, LengthPrefix, Encoding);
+
     /// <summary>Writes a string as byte array with an length prefix.</summary>
-    public void WriteString(string input, LengthPrefix lengthPrefix = LengthPrefix.Default, Encoding encoding = null)
+    public void WriteString(string input, LengthPrefix lengthPrefix, Encoding encoding)
     {
         var bytes = GetEncodingBytes(input, encoding);
 
@@ -211,13 +243,14 @@ public sealed class BinaryViewWriter : StreamStackUser
         WriteArray(bytes, LengthPrefix.None);
     }
 
+    public void WriteTerminatedString(string input) => WriteTerminatedString(input, Encoding);
     /// <summary>
     /// Writes an string as byte array and terminates with null.
     /// </summary>
     /// <remarks>null-terminated strings are error prone, if possible use WriteString instead.</remarks>
     /// <param name="input"></param>
     /// <param name="encoding"></param>
-    public void WriteTerminatedString(string input, Encoding encoding = null)
+    public void WriteTerminatedString(string input, Encoding encoding)
     {
         var bytes = GetEncodingBytes(input, encoding);
 
@@ -234,7 +267,7 @@ public sealed class BinaryViewWriter : StreamStackUser
     public void WriteStringArray(string[] input, LengthPrefix arrayPrefix = LengthPrefix.Default, LengthPrefix stringPrefix = LengthPrefix.Default)
     {
         WriteLengthPrefix(arrayPrefix, input.Length);
-        for (int i = 0; i < input.Length; i++) WriteString(input[i], stringPrefix);
+        for (int i = 0; i < input.Length; i++) WriteString(input[i], stringPrefix, Encoding);
     }
 
     private bool DoValidateLengthPrefix(LengthPrefix lengthPrefix, long length) => lengthPrefix switch

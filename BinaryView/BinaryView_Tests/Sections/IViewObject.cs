@@ -7,9 +7,9 @@ partial class Section
         const int val0 = 354;
         const int val1 = 144445;
 
-        TestSys.WriteTitle("test IViewObject");
+        Section("test IViewObject");
 
-        TestSys.RunTest("read-to/write", () =>
+        Test("read-to/write", () =>
         {
             using var test = new TestData();
             var bw = test.Writer;
@@ -23,14 +23,13 @@ partial class Section
 
             br.ReadToIView(obj);
 
-            TestSys.AssertValueIsEqual(obj.A, val0);
-            TestSys.AssertValueIsEqual(obj.B, val1);
+            AssertIsEqual(obj.A, val0);
+            AssertIsEqual(obj.B, val1);
 
-            TestSys.WriteSucces($"OK");
-            return TestResult.Success;
+            Succes();
         });
 
-        TestSys.RunTest("read-new/write", () =>
+        Test("read-new/write", () =>
         {
             using var test = new TestData();
             var bw = test.Writer;
@@ -44,11 +43,10 @@ partial class Section
 
             obj = br.ReadIView<InterfaceImplementation>();
 
-            TestSys.AssertValueIsEqual(obj.A, val0);
-            TestSys.AssertValueIsEqual(obj.B, val1);
+            AssertIsEqual(obj.A, val0);
+            AssertIsEqual(obj.B, val1);
 
-            TestSys.WriteSucces($"OK");
-            return TestResult.Success;
+            Succes();
         });
     }
 }

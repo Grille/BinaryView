@@ -65,9 +65,9 @@ public static class CompressionExtensions
     public static void CompressAll(this BinaryView view, CompressionType type, CompressionLevel level = CompressionLevel.Optimal)
     {
         if (view.Mode == ViewMode.Read)
-            view.Reader.CompressAll(type);
+            view.Reader!.CompressAll(type);
         else
-            view.Writer.CompressAll(type, level);
+            view.Writer!.CompressAll(type, level);
     }
 
     public static void BeginCompressedSection(this BinaryView view, CompressionType type, LengthPrefix prefix = LengthPrefix.Default)
@@ -76,16 +76,16 @@ public static class CompressionExtensions
     public static void BeginCompressedSection(this BinaryView view, CompressionType type, CompressionLevel level, LengthPrefix prefix = LengthPrefix.Default)
     {
         if (view.Mode == ViewMode.Read)
-            view.Reader.BeginCompressedSection(type, prefix);
+            view.Reader!.BeginCompressedSection(type, prefix);
         else
-            view.Writer.BeginCompressedSection(type, level, prefix);
+            view.Writer!.BeginCompressedSection(type, level, prefix);
     }
 
     public static void EndCompressedSection(this BinaryView view)
     {
         if (view.Mode == ViewMode.Read)
-            view.Reader.EndCompressedSection();
+            view.Reader!.EndCompressedSection();
         else
-            view.Writer.EndCompressedSection();
+            view.Writer!.EndCompressedSection();
     }
 }

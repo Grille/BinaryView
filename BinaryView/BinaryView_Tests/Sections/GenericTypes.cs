@@ -4,7 +4,7 @@ partial class Section
 {
     public static void GenericTypes()
     {
-        TestSys.WriteTitle("test unmanaged types");
+        Section("test unmanaged types");
 
         Tests.WriteReadGeneric(false, true);
         Tests.WriteReadGeneric(char.MinValue, char.MaxValue);

@@ -2,14 +2,24 @@
 using System.Collections.Generic;
 using System.Text;
 using System.IO;
+using System.Collections;
 
 namespace GGL.IO;
-public class StreamStack : Stack<StreamStackEntry>, IDisposable
+public class StreamStack : IDisposable
 {
+    readonly Stack<StreamStackEntry> _stack;
     public StreamStack(Stream stream, bool leaveOpen)
     {
+        _stack = new Stack<StreamStackEntry>();
+
         Push(new StreamStackEntry(this, stream, leaveOpen));
+        if (Peak == null)
+        {
+            throw new NullReferenceException();
+        }
     }
+
+    public int Count => _stack.Count;
 
     public StreamStackEntry Peak { private set; get; }
 
@@ -33,25 +43,37 @@ public class StreamStack : Stack<StreamStackEntry>, IDisposable
         return obj;
     }
 
+    public StreamStackEntry Peek() => _stack.Peek();
+
     public void Push(Stream stream, bool leaveOpen)
     {
         Push(new(this, stream, leaveOpen));
     }
 
-    public new void Push(StreamStackEntry entry)
+    public void Push(StreamStackEntry entry)
     {
         if (entry.Owner != this)
             throw new ArgumentException("Owner not this.");
 
-        base.Push(entry);
+        _stack.Push(entry);
         Peak = entry;
     }
 
     /// <inheritdoc/>
-    public new StreamStackEntry Pop()
+    public StreamStackEntry Pop()
     {
-        var entry = base.Pop();
-        Peak = Count > 0 ? Peek() : null;
+        //if (Count <= 1)
+        //    throw new InvalidOperationException("Only 1 element left, can't empty stack");
+
+        var entry = _stack.Pop();
+        if (Count > 0)
+        {
+            Peak = Peek();
+        }
+        else
+        {
+            Peak = null!;
+        }
         return entry;
     }
 
@@ -105,7 +127,7 @@ public class StreamStack : Stack<StreamStackEntry>, IDisposable
             while (Count > 0)
             {
                 var stream = Pop();
-                stream?.Dispose();
+                stream.Dispose();
             }
 
             disposedValue = true;

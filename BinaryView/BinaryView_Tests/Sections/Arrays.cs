@@ -4,7 +4,7 @@ partial class Section
 {
     public static void Arrays()
     {
-        TestSys.WriteTitle("test arrays");
+        Section("test arrays");
 
         Tests.WriteReadGenericArray(new byte[] { 0, 2, 4, 6 });
         Tests.WriteReadGenericArray(new byte[] { 0, 2, 4, 6 }, LengthPrefix.Int64);

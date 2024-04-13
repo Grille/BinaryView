@@ -3,7 +3,7 @@ partial class Section
 {
     public static void Prefix()
     {
-        TestSys.WriteTitle("test prefix");
+        Section("test prefix");
 
         Tests.WriteReadPrefix(LengthPrefix.SByte, sbyte.MinValue, 1);
         Tests.WriteReadPrefix(LengthPrefix.SByte, sbyte.MaxValue, 1);

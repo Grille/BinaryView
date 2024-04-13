@@ -9,32 +9,38 @@ using System.Runtime.Serialization.Formatters.Binary;
 using System.Runtime.CompilerServices;
 using GGL.IO.Compression;
 using System.Runtime.InteropServices.ComTypes;
+using System.Collections.ObjectModel;
 
 namespace GGL.IO;
 
 public sealed class BinaryViewReader : StreamStackUser
 {
+    /// <summary>
+    /// If a <see cref="LengthPrefix"/> above this value is read, an <see cref="InvalidDataException"/> will be thrown.
+    /// </summary>
     public long LengthPrefixMaxValue { get; set; } = long.MaxValue;
 
 
-    /// <summary>Initialize BinaryView with a empty MemoryStream</summary>
+    /// <summary>Initialize BinaryView with a new empty <see cref="MemoryStream"/>.</summary>
     public BinaryViewReader() :
         this(new StreamStack(new MemoryStream(), false))
     { }
 
-    /// <summary>Initialize BinaryView with a FileStream</summary>
+    /// <summary>Initialize BinaryView with a new <see cref="FileStream"/>.</summary>
     /// <param name="path">File path</param>
     public BinaryViewReader(string path) :
         this(new StreamStack(new FileStream(path, FileMode.Open, FileAccess.Read), false))
     { }
 
-    /// <summary>Initialize BinaryView with a MemoryStream filled with bytes from array</summary>
+    /// <summary>Initialize BinaryView with a new <see cref="MemoryStream"/> from the byte array.</summary>
     /// <param name="bytes">Base array</param>
     public BinaryViewReader(byte[] bytes) :
         this(new StreamStack(new MemoryStream(bytes), false))
     { }
 
-    /// <summary>Initialize BinaryView with a Stream</summary>
+    /// <summary>Initialize BinaryView with a Stream.</summary>
+    /// <param name="stream">The stream to read from.</param>
+    /// <param name="leaveOpen">Leave the stream open after the BinaryViewReader object is disposed.</param>
     public BinaryViewReader(Stream stream, bool leaveOpen = true) :
         this(new StreamStack(stream, leaveOpen))
     { }
@@ -136,24 +142,11 @@ public sealed class BinaryViewReader : StreamStackUser
         return obj;
     }
 
-    /// <inheritdoc cref="IFormatter.Deserialize(Stream)"/>
-    [Obsolete]
-    public T Deserialize<T>()
-    {
-        return Deserialize<T>(Formatter);
-    }
-
-    /// <inheritdoc cref="IFormatter.Deserialize(Stream)"/>
-    [Obsolete]
-    public T Deserialize<T>(IFormatter formatter)
-    {
-        return (T)formatter.Deserialize(PeakStream);
-    }
-
+    public unsafe T[] ReadArray<T>() where T : unmanaged => ReadArray<T>(LengthPrefix);
 
     /// <summary>Reads a array of unmanaged structs from the stream and increases the position by the size of the array elements, get amount of elements from prefix</summary>
     /// <typeparam name="T"></typeparam> Type of unmanaged struct
-    public unsafe T[] ReadArray<T>(LengthPrefix lengthPrefix = LengthPrefix.Default) where T : unmanaged
+    public unsafe T[] ReadArray<T>(LengthPrefix lengthPrefix) where T : unmanaged
     {
         long length = ReadLengthPrefix(lengthPrefix);
         return ReadArray<T>(length);
@@ -162,54 +155,93 @@ public sealed class BinaryViewReader : StreamStackUser
     /// <summary>Reads a array of unmanaged structs from the stream and increases the position by the size of the array elements</summary>
     /// <typeparam name="T"></typeparam> Type of unmanaged struct
     /// <param name="length">Amount of elements to read</param>
-    public unsafe T[] ReadArray<T>(long length) where T : unmanaged
+    public T[] ReadArray<T>(long length) where T : unmanaged
     {
         T[] array = new T[length];
         for (int i = 0; i < array.Length; i++) array[i] = Read<T>();
         return array;
     }
 
+    public void ReadToArray<T>(T[] array, int count, int offset) where T : unmanaged
+    {
+        for (int i = 0; i < count; i++) array[offset + i] = Read<T>();
+    }
+
+    public void ReadToIList<T>(IList<T> list) where T : unmanaged => ReadToIList(list, LengthPrefix);
+
+    public void ReadToIList<T>(IList<T> list, LengthPrefix lengthPrefix, int offset) where T : unmanaged
+    {
+        long length = ReadLengthPrefix(lengthPrefix);
+        ReadToIList(list, length, offset);
+    }
+
+
     /// <summary>Reads a array of unmanaged structs from the stream and increases the position by the size of the array elements, get amount of elements from prefix</summary>
     /// <typeparam name="T"></typeparam> Type of unmanaged struct
     /// <param name="list">Pointer to existing list to write in</param>
-    public unsafe IList<T> ReadToIList<T>(IList<T> list, LengthPrefix lengthPrefix = LengthPrefix.Default) where T : unmanaged
+    /// <param name="lengthPrefix"></param>
+    public void ReadToIList<T>(IList<T> list, LengthPrefix lengthPrefix) where T : unmanaged
     {
+        int listCount = list.Count;
         long length = ReadLengthPrefix(lengthPrefix);
-        return ReadToIList(list, 0, length);
+        for (int i = 0; i < length; i++)
+        {
+            if (i >= listCount)
+                list.Add(Read<T>());
+            else
+                list[i] = Read<T>();
+        }
     }
+
+    public void ReadToIList<T>(IList<T> dstList, long count) where T : unmanaged => ReadToIList(dstList, count, 0);
 
     /// <summary>Reads a list of unmanaged structs from the stream and increases the position by the size of the array elements, reads no length prefix</summary>
     /// <typeparam name="T"></typeparam> Type of unmanaged struct
     /// <param name="dstList">Pointer to existing list to write in</param>
     /// <param name="offset">Offset in list</param>
     /// <param name="count">Amount of elements to read</param>
-    public unsafe IList<T> ReadToIList<T>(IList<T> dstList, int offset, long count) where T : unmanaged
+    public void ReadToIList<T>(IList<T> dstList, long count, int offset) where T : unmanaged
     {
+        int listCount = dstList.Count;
         for (int i = 0; i < count; i++)
         {
             int idx = offset + i;
             var item = Read<T>();
-            if (idx >= dstList.Count)
+            if (idx >= listCount)
                 dstList.Add(item);
             else
                 dstList[idx] = item;
         }
+    }
 
-        return dstList;
+    public void ReadToICollection<T>(ICollection<T> collection) where T : unmanaged => ReadToICollection(collection, LengthPrefix);
+
+    public void ReadToICollection<T>(ICollection<T> collection, LengthPrefix lengthPrefix) where T : unmanaged
+    {
+        long length = ReadLengthPrefix(lengthPrefix);
+        ReadToICollection(collection, length);
+    }
+
+    public void ReadToICollection<T>(ICollection<T> collection, long count) where T : unmanaged
+    {
+        for (int i = 0; i < count; i++)
+        {
+            collection.Add(Read<T>());
+        }
     }
 
     /// <summary>Reads a list of unmanaged structs from the stream and increases the position by the size of the array elements, reads no length prefix</summary>
     /// <typeparam name="T"></typeparam> Type of unmanaged struct
     /// <param name="dstList">Pointer to existing list to write in</param>
     /// <param name="offset">Offset in dstList</param>
-    public unsafe IList<T> ReadRemainderToIList<T>(IList<T> dstList, int offset) where T : unmanaged
+    public unsafe void ReadRemainderToIList<T>(IList<T> dstList, int offset) where T : unmanaged
     {
         long count = Remaining / sizeof(T);
-        return ReadToIList(dstList, offset, count);
+        ReadToIList(dstList, count, offset);
     }
 
     /// <summary>Reads remaining bytes</summary>
-    public unsafe byte[] ReadRemainder()
+    public byte[] ReadRemainder()
     {
         long count = Remaining;
         return ReadArray<byte>(count);
@@ -259,18 +291,19 @@ public sealed class BinaryViewReader : StreamStackUser
     /// <summary>Reads a decimal from the stream and increases the position by sixteen bytes</summary>
     public unsafe decimal ReadDecimal() => Read<decimal>();
 
+    public string ReadString() => ReadString(LengthPrefix, Encoding);
+
     /// <summary>Reads a byte-array as string from the stream</summary>
-    public string ReadString(LengthPrefix lengthPrefix = LengthPrefix.Default, Encoding encoding = null)
+    public string ReadString(LengthPrefix lengthPrefix, Encoding encoding)
     {
         long length = ReadLengthPrefix(lengthPrefix);
         return ReadString(length, encoding);
     }
 
-    public string ReadString(long length, Encoding encoding = null)
-    {
-        if (encoding == null)
-            encoding = Encoding;
+    public string ReadString(long length) => ReadString(length, Encoding);
 
+    public string ReadString(long length, Encoding encoding)
+    {
         if (StringLengthMode == StringLengthMode.CharCount)
         {
             if (encoding.IsSingleByte)
@@ -313,7 +346,9 @@ public sealed class BinaryViewReader : StreamStackUser
         }
     }
 
-    public string ReadTerminatedString(Encoding encoding = null)
+    public string ReadTerminatedString() => ReadTerminatedString(Encoding);
+
+    public string ReadTerminatedString(Encoding encoding)
     {
         var bytes = new List<byte>();
         while (true)

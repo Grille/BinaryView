@@ -4,7 +4,7 @@ partial class Section
 {
     public static void IList()
     {
-        TestSys.WriteTitle("test IList");
+        Section("test IList");
 
         int size = 8;
 
@@ -14,7 +14,7 @@ partial class Section
         for (int i = 0; i < size; i++)
             data0[i] = (byte)(rnd.NextDouble() * 255f);
 
-        TestSys.RunTest("Read new List", () =>
+        Test("Read new List", () =>
         {
             using var test = new TestData();
             var bw = test.Writer;
@@ -26,16 +26,16 @@ partial class Section
 
             //read
 
-            var list = br.ReadToIList(new byte[data0.Length]);
+            var list = new byte[data0.Length];
+            br.ReadToIList(list);
 
-            TestSys.AssertIListIsEqual(data0, list);
+            AssertIListIsEqual(data0, list);
 
 
-            TestSys.WriteSucces($"OK");
-            return TestResult.Success;
+            Succes();
         });
 
-        TestSys.RunTest("Read to new List", () =>
+        Test("Read to new List", () =>
         {
             using var test = new TestData();
             var bw = test.Writer;
@@ -49,14 +49,13 @@ partial class Section
             var list = new List<byte>();
             br.ReadToIList(list);
 
-            TestSys.AssertIListIsEqual(data0, list);
+            AssertIListIsEqual(data0, list);
 
 
-            TestSys.WriteSucces($"OK");
-            return TestResult.Success;
+            Succes();
         });
 
-        TestSys.RunTest("Read no Prefix", () =>
+        Test("Read no Prefix", () =>
         {
             using var test = new TestData();
             var bw = test.Writer;
@@ -68,18 +67,17 @@ partial class Section
 
             //read
             var list = new List<byte>();
-            br.ReadToIList(list, 0, size - 2);
+            br.ReadToIList(list, size - 2);
             list.Add(br.ReadByte());
             list.Add(br.ReadByte());
 
-            TestSys.AssertIListIsEqual(data0, list);
+            AssertIListIsEqual(data0, list);
 
 
-            TestSys.WriteSucces($"OK");
-            return TestResult.Success;
+            Succes();
         });
 
-        TestSys.RunTest("Read Remainder", () =>
+        Test("Read Remainder", () =>
         {
             using var test = new TestData();
             var bw = test.Writer;
@@ -94,14 +92,13 @@ partial class Section
             br.ReadRemainderToIList(list, 0);
             br.Dispose();
 
-            TestSys.AssertIListIsEqual(data0, list);
+            AssertIListIsEqual(data0, list);
 
 
-            TestSys.WriteSucces($"OK");
-            return TestResult.Success;
+            Succes();
         });
 
-        TestSys.RunTest("Read Remainder", () =>
+        Test("Read Remainder", () =>
         {
             using var test = new TestData();
             var bw = test.Writer;
@@ -119,14 +116,13 @@ partial class Section
 
             br.ReadRemainderToIList(list, 2);
 
-            TestSys.AssertIListIsEqual(data0, list);
+            AssertIListIsEqual(data0, list);
 
 
-            TestSys.WriteSucces($"OK");
-            return TestResult.Success;
+            Succes();
         });
 
-        TestSys.RunTest("Read Remainder Mod", () =>
+        Test("Read Remainder Mod", () =>
         {
             using var test = new TestData();
             var bw = test.Writer;
@@ -145,12 +141,11 @@ partial class Section
             br.ReadRemainderToIList(rdata1, 2);
             byte rdata2 = br.ReadByte();
 
-            TestSys.AssertValueIsEqual(rdata0, 172);
-            TestSys.AssertIListIsEqual(rdata1, new ushort[] { 5303, 12925 });
-            TestSys.AssertValueIsEqual(rdata2, 211);
+            AssertIsEqual(rdata0, 172);
+            AssertIListIsEqual(rdata1, new ushort[] { 5303, 12925 });
+            AssertIsEqual(rdata2, 211);
 
-            TestSys.WriteSucces($"OK");
-            return TestResult.Success;
+            Succes();
         });
     }
 }

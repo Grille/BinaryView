@@ -4,11 +4,11 @@ partial class Section
 {
     public static void Combined()
     {
-        TestSys.WriteTitle("test Combined");
+        Section("test Combined");
 
         byte[] data0 = new byte[8] { 0, 1, 2, 3, 4, 5, 6, 7 };
 
-        TestSys.RunTest("Combined", () =>
+        Test("Combined", () =>
         {
             var file = new MemoryStream();
 
@@ -24,7 +24,7 @@ partial class Section
                 var br = td.Reader;
 
                 var rdata = br.ReadArray<byte>(8);
-                TestSys.AssertIListIsEqual(rdata, data0);
+                AssertIListIsEqual(rdata, data0);
 
                 td.Seek(1);
                 bw.Write<byte>(200);
@@ -32,14 +32,13 @@ partial class Section
                 td.Seek(1);
                 byte val = br.ReadByte();
 
-                TestSys.AssertValueIsEqual<byte>(val, 200);
+                AssertIsEqual<byte>(val, 200);
             }
 
-            TestSys.WriteSucces($"OK");
-            return TestResult.Success;
+            Succes();
         });
 
-        TestSys.RunTest("Insert", () =>
+        Test("Insert", () =>
         {
             var file = new MemoryStream();
 
@@ -65,11 +64,10 @@ partial class Section
                 td.Seek(0);
                 var vdata1 = new byte[10] { 0, 1, 2, 3, 100, 101, 4, 5, 6, 7 };
                 var rdata1 = br.ReadArray<byte>(10);
-                TestSys.AssertIListIsEqual(rdata1, vdata1);
+                AssertIListIsEqual(rdata1, vdata1);
             }
 
-            TestSys.WriteSucces($"OK");
-            return TestResult.Success;
+            Succes();
         });
     }
 }

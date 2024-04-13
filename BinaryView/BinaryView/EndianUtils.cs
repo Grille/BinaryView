@@ -1,10 +1,15 @@
 ﻿using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Text;
 
 namespace GGL.IO;
 internal static class EndianUtils
 {
+    public static readonly bool IsLittleEndian = BitConverter.IsLittleEndian;
+
+    public static readonly Endianness SystemEndianness = IsLittleEndian ? Endianness.LittleEndian : Endianness.BigEndian;
+
     public static byte[] BitReverseTable =
     {
         0x00, 0x80, 0x40, 0xc0, 0x20, 0xa0, 0x60, 0xe0,
@@ -40,6 +45,15 @@ internal static class EndianUtils
         0x0f, 0x8f, 0x4f, 0xcf, 0x2f, 0xaf, 0x6f, 0xef,
         0x1f, 0x9f, 0x5f, 0xdf, 0x3f, 0xbf, 0x7f, 0xff
     };
+
+    public static bool NeedByteReorder(Endianness Target)
+    {
+        if (Target == Endianness.System)
+            return false;
+        if (Target == SystemEndianness)
+            return false;
+        return true;
+    }
 
     public static unsafe void ReverseObjBits(void* obj, int size, bool byteReorder, bool bitReorder)
     {

@@ -5,7 +5,7 @@ partial class Section
     public static void Strings()
     {
 #pragma warning disable SYSLIB0001
-        TestSys.WriteTitle("test string");
+        Section("test string");
 
         Tests.WriteReadString("TestString123", LengthPrefix.Int32, StringLengthMode.ByteCount, Encoding.UTF8);
         Tests.WriteReadString("TestString123", LengthPrefix.Byte, StringLengthMode.ByteCount, Encoding.UTF8);

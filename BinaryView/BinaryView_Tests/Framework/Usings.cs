@@ -9,3 +9,10 @@ global using GGL.IO;
 global using GGL.IO.Compression;
 global using System.Diagnostics;
 global using System.Runtime.CompilerServices;
+global using Grille.ConsoleTestLib;
+global using Grille.ConsoleTestLib.Utils;
+
+global using static BinaryView_Tests.Asserts;
+global using static Grille.ConsoleTestLib.UsingSyntaxAsserts;
+global using static Grille.ConsoleTestLib.GlobalTestSystem;
+global using static Grille.ConsoleTestLib.TestResult;

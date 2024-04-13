@@ -4,7 +4,7 @@ partial class Section
 {
     public static void Serializble()
     {
-        TestSys.WriteTitle("test serializable types");
+        Section("test serializable types");
 
         Tests.WriteReadSerializable(42);
         Tests.WriteReadSerializable("Hello World");

@@ -4,7 +4,7 @@ partial class Section
 {
     public static void PrimitiveTypes()
     {
-        TestSys.WriteTitle("test types");
+        Section("test types");
 
         Tests.WriteReadPrimitive("Boolean", false, true);
         Tests.WriteReadPrimitive("Char", char.MinValue, char.MaxValue);

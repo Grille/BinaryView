@@ -46,7 +46,8 @@ public enum LengthPrefix
 
 public enum Endianness
 {
+    /// <summary>Use endianness of current computer architecture.</summary>
+    System,
     LittleEndian,
     BigEndian,
-    Default = LittleEndian,
 }

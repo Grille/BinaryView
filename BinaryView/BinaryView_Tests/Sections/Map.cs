@@ -4,7 +4,7 @@ partial class Section
 {
     public static void Map()
     {
-        TestSys.WriteTitle("test map");
+        Section("test map");
 
         Tests.WriteReadMap(2048, false);
         Tests.WriteReadMap(2048, true);

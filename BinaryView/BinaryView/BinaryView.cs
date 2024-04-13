@@ -6,11 +6,14 @@ using System.IO;
 namespace GGL.IO;
 public sealed class BinaryView : StreamStackUser
 {
-    public readonly BinaryViewWriter Writer;
-    public readonly BinaryViewReader Reader;
     readonly bool OwnsStreamStack;
 
-    public readonly ViewMode Mode;
+    readonly BinaryViewWriter? _writer;
+    readonly BinaryViewReader? _reader;
+    public BinaryViewWriter Writer { get => _writer != null ? _writer : throw new NotSupportedException("BinaryView not in write mode."); }
+    public BinaryViewReader Reader { get => _reader != null ? _reader : throw new NotSupportedException("BinaryView not in read mode."); }
+
+    public ViewMode Mode { get; }
 
     public bool IsReading => Mode == ViewMode.Read;
 
@@ -19,32 +22,34 @@ public sealed class BinaryView : StreamStackUser
         OwnsStreamStack = true;
         Mode = mode;
         if (Mode == ViewMode.Read)
-            Reader = new BinaryViewReader(StreamStack);
+            _reader = new BinaryViewReader(StreamStack);
         else
-            Writer = new BinaryViewWriter(StreamStack);
+            _writer = new BinaryViewWriter(StreamStack);
     }
 
     public BinaryView(BinaryViewReader reader) : base(reader.StreamStack, 0)
     {
         OwnsStreamStack = false;
-        Reader = reader;
+        _reader = reader;
         Mode = ViewMode.Read;
     }
 
     public BinaryView(BinaryViewWriter writer) : base(writer.StreamStack, 0)
     {
         OwnsStreamStack = false;
-        Writer = writer;
+        _writer = writer;
         Mode = ViewMode.Write;
     }
 
-    public static implicit operator BinaryViewReader(BinaryView view) => view.Reader;
-    public static implicit operator BinaryViewWriter(BinaryView view) => view.Writer;
+    public static implicit operator BinaryViewReader?(BinaryView view) => view.Reader;
+    public static implicit operator BinaryViewWriter?(BinaryView view) => view.Writer;
 
     public static implicit operator BinaryView(BinaryViewReader reader) => new(reader);
     public static implicit operator BinaryView(BinaryViewWriter writer) => new(writer);
 
-    public void String(ref string str, LengthPrefix lengthPrefix = IO.LengthPrefix.Default, Encoding encoding = null)
+    public void String(ref string str) => String(ref str, LengthPrefix, Encoding);
+
+    public void String(ref string str, LengthPrefix lengthPrefix, Encoding encoding)
     {
         if (Mode == ViewMode.Read)
             str = Reader.ReadString(lengthPrefix, encoding);
@@ -52,7 +57,9 @@ public sealed class BinaryView : StreamStackUser
             Writer.WriteString(str, lengthPrefix, encoding);
     }
 
-    public void String(ref string str, long length, Encoding encoding = null)
+    public void String(ref string str, long length) => String(ref str, length, Encoding);
+
+    public void String(ref string str, long length, Encoding encoding)
     {
         if (Mode == ViewMode.Read)
             str = Reader.ReadString(length, encoding);
@@ -60,7 +67,8 @@ public sealed class BinaryView : StreamStackUser
             Writer.WriteString(str, IO.LengthPrefix.None, encoding);
     }
 
-    public void TerminatedString(ref string str, Encoding encoding = null)
+    public void TerminatedString(ref string str) => TerminatedString(ref str, Encoding);
+    public void TerminatedString(ref string str, Encoding encoding)
     {
         if (Mode == ViewMode.Read)
             str = Reader.ReadTerminatedString(encoding);
@@ -111,7 +119,9 @@ public sealed class BinaryView : StreamStackUser
     public void Double(ref double value) => Struct(ref value);
     public void Decimal(ref decimal value) => Struct(ref value);
 
-    public void Array<T>(ref T[] array, LengthPrefix lengthPrefix = IO.LengthPrefix.Default) where T : unmanaged
+    public void Array<T>(ref T[] array) where T : unmanaged => Array(ref array, LengthPrefix);
+
+    public void Array<T>(ref T[] array, LengthPrefix lengthPrefix) where T : unmanaged
     {
         if (Mode == ViewMode.Read)
             array = Reader.ReadArray<T>(lengthPrefix);
@@ -127,7 +137,9 @@ public sealed class BinaryView : StreamStackUser
             Writer.WriteArray(array, IO.LengthPrefix.None);
     }
 
-    public void IList<T>(IList<T> list, LengthPrefix lengthPrefix = IO.LengthPrefix.Default) where T : unmanaged
+    public void IList<T>(IList<T> list) where T : unmanaged => IList(list, LengthPrefix);
+
+    public void IList<T>(IList<T> list, LengthPrefix lengthPrefix) where T : unmanaged
     {
         if (Mode == ViewMode.Read)
             Reader.ReadToIList(list, lengthPrefix);
@@ -143,7 +155,7 @@ public sealed class BinaryView : StreamStackUser
             Writer.WriteIList(list, offset, count);
     }
 
-    public void IView<T>(T obj) where T : IViewObject
+    public void IView<T>(T obj) where T : class, IViewObject
     {
         if (Mode == ViewMode.Read)
             Reader.ReadToIView(obj);
@@ -151,7 +163,7 @@ public sealed class BinaryView : StreamStackUser
             Writer.WriteIView(obj);
     }
 
-    public void LengthPrefix(ref long length, LengthPrefix lengthPrefix = IO.LengthPrefix.Default)
+    public void ReadWriteLengthPrefix(ref long length, LengthPrefix lengthPrefix)
     {
         if (Mode == ViewMode.Read)
             length = Reader.ReadLengthPrefix(lengthPrefix);
@@ -167,8 +179,8 @@ public sealed class BinaryView : StreamStackUser
             {
                 if (OwnsStreamStack)
                 {
-                    Reader?.Dispose();
-                    Writer?.Dispose();
+                    _reader?.Dispose();
+                    _writer?.Dispose();
                 }
             }
             DisposedValue = true;
