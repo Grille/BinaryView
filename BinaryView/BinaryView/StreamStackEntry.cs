@@ -2,13 +2,14 @@
 using System.Collections.Generic;
 using System.Text;
 using System.IO;
+using System.Runtime.CompilerServices;
 
 namespace GGL.IO;
 public class StreamStackEntry : IDisposable
 {
-    public readonly StreamStack Owner;
-    public readonly Stream Stream;
-    public readonly bool LeaveOpen;
+    public StreamStack Owner { get; }
+    public Stream Stream { get; }
+    public bool LeaveOpen { get; }
 
     public bool IsPeak => Owner.Peak == this;
 
@@ -17,6 +18,12 @@ public class StreamStackEntry : IDisposable
 
     public StreamStackEntry(StreamStack owner, Stream stream, bool leaveOpen)
     {
+        if (owner == null)
+            throw new ArgumentNullException(nameof(owner));
+
+        if (stream == null)
+            throw new ArgumentNullException(nameof(stream));
+
         Owner = owner;
         Stream = stream;
         LeaveOpen = leaveOpen;

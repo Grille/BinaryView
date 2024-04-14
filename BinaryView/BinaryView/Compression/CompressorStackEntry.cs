@@ -4,13 +4,13 @@ using System.IO.Compression;
 namespace GGL.IO.Compression;
 public class CompressorStackEntry : StreamStackEntry
 {
-    public readonly BinaryViewWriter Writer;
-    public readonly CompressionType Type;
-    public readonly CompressionLevel Level;
-    public readonly LengthPrefix LengthPrefix;
-    public readonly bool WriteLengthPerfix;
+    public BinaryViewWriter Writer { get; }
+    public CompressionType Type { get; }
+    public CompressionLevel Level { get; }
+    public LengthPrefix LengthPrefix { get; }
+    public bool WriteLengthPerfix { get; }
 
-    public long ContentLength { get;private set; }
+    public long ContentLength { get; private set; }
     public long CompressedLength { get; private set; }
 
     public CompressorStackEntry(BinaryViewWriter bw, CompressionType type, CompressionLevel level) : base(bw.StreamStack, new MemoryStream(), false)
@@ -44,7 +44,7 @@ public class CompressorStackEntry : StreamStackEntry
 
             if (WriteLengthPerfix)
             {
-                Writer.WriteLengthPrefix(LengthPrefix, compressedStream.Length);
+                Writer.WriteLengthPrefix(compressedStream.Length, LengthPrefix);
             }
             Writer.StreamStack.CopyToPeak(compressedStream, false);
 

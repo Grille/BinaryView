@@ -37,29 +37,29 @@ internal class CompresionTests
         byte[] rdata0, rdata1, rdata2;
 
         Test($"{Name} Section", () =>
+        {
+            using var data = new TestData();
+            var bw = data.Writer;
+            var br = data.Reader;
+
+            using (bw.BeginCompressedSection(Type))
             {
-                using var data = new TestData();
-                var bw = data.Writer;
-                var br = data.Reader;
-
-                using (bw.BeginCompressedSection(Type))
-                {
-                    bw.WriteArray(data0);
-                }
+                bw.WriteArray(data0);
+            }
 
 
-                AssertVirtualFileWasWriten(data);
+            AssertVirtualFileWasWriten(data);
 
 
-                using (br.BeginCompressedSection(Type))
-                {
-                    rdata0 = br.ReadArray<byte>();
-                    AssertIListIsEqual(data0, rdata0);
-                }
+            using (br.BeginCompressedSection(Type))
+            {
+                rdata0 = br.ReadArray<byte>();
+                AssertIListIsEqual(data0, rdata0);
+            }
 
 
-                Succes($"{data.Position}b");
-            });
+            Succes($"{data.Position}b");
+        });
 
         Test($"{Name} Section (non using)", () =>
         {
@@ -206,7 +206,7 @@ internal class CompresionTests
 
             using (var br = data.Reader)
             {
-                br.CompressAll(Type);
+                br.DecompressAll(Type);
                 rdata0 = br.ReadArray<byte>();
                 AssertIListIsEqual(data0, rdata0);
             }
@@ -232,7 +232,7 @@ internal class CompresionTests
             {
                 rdata0 = br.ReadArray<byte>();
                 AssertIListIsEqual(data0, rdata0);
-                br.CompressAll(Type);
+                br.DecompressAll(Type);
                 rdata1 = br.ReadArray<byte>();
                 AssertIListIsEqual(data1, rdata1);
             }

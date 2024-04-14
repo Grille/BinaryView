@@ -50,5 +50,8 @@ partial class Section
 
         Tests.WriteReadUnsafePrefix(LengthPrefix.UIntSmart62, long.MinValue, UIntSmart62.MinValue, 1);
         Tests.WriteReadUnsafePrefix(LengthPrefix.UIntSmart62, long.MaxValue, UIntSmart62.MaxValue, 8);
+
+        Tests.WriteReadCustomPrefix(new UIntSmart15(), UIntSmart15.MinValue, UIntSmart15.MinValue, 1);
+        Tests.WriteReadCustomPrefix(new UIntSmart15(), UIntSmart15.MaxValue, UIntSmart15.MaxValue, 2);
     }
 }

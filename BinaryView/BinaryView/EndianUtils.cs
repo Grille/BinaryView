@@ -55,7 +55,7 @@ internal static class EndianUtils
         return true;
     }
 
-    public static unsafe void ReverseObjBits(void* obj, int size, bool byteReorder, bool bitReorder)
+    public static unsafe void ReverseBits(void* obj, int size, bool byteReorder, bool bitReorder)
     {
         byte* ptr = (byte*)obj;
 

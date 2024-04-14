@@ -1,36 +1,27 @@
 # BinaryView
-Libary to easily write and read binary data from streams and files.<br>
-Available as a [NuGet Package](https://www.nuget.org/packages/GGL.BinaryView/).
-<br>
+Libary to easily write and read binary data from streams and files.
+Available as a [NuGet Package](https://www.nuget.org/packages/Grille.IO.BinaryView/).
+
+This library basically provides more advanced versions of the [`System.IO.BinaryWriter`](https://learn.microsoft.com/en-us/dotnet/api/system.io.binarywriter) and [`System.IO.BinaryReader`](https://learn.microsoft.com/en-us/dotnet/api/system.io.binaryreader) classes.
+
+[Documentation](https://github.com/Grille/BinaryView/wiki)
 
 ## Features
 * Symmetrical write/read functions.
-* Simple string functions with encoding options.
+* Simple to use string functions with encoding options.
 * Generic functions to write whole lists and (unmanaged) structs.
-* Easy compresion/decompresion of sections or whole stream's with Deflate.
+* Easy compresion/decompresion of sections or whole stream's with GZip, Deflate, Brotli or ZLib.
 * Support of ISerializable, (when ISerializable is not implemented, the size is usually pretty bloated in comparision to other functions.)
 * Smart list-length prefixes depending on array size. (42 takes 1 byte, 3000 takes 2 etc.)
 * Separate support for byte and bit endianness/order.
-<br>
-
-## Error Handling
-This library has only minimal error checking capabilities.<br>
-If you mess up the write/read order, or try to read a corrupted/wrong file things will **silently** break!<br><br>
-Then read functions will give your wrong values, or ReadArray hangs because it try's to read an petabyte sized array.<br>
-And this kind of lies in the nature of this library, if you mess up your position and read an int that says the next list will be 42TB big, this library has very little ways to know if you’re really serious about this.<br>
-An small helper for this is the `LengthPrefixSafetyMaxValue` Property, if you try to read any list or string, that has an higher element count than this, an InvalidDataException will be thrown.<br><br>
-But overall, You have to make sure everting is save on you own.<br>
-
-
-## Documentation
-This project has not much documentation (besides examples) yet, but most functions have descriptions, and should be pretty self-explanatory *(I hope...)*<br>
 
 ## Example Write/Read (asymmetrical)
 ```cs
-using GGL.IO;
-using GGL.IO.Compression;
+using Grille.IO;
+using Grille.IO.Compression;
 ```
 Write
+
 ```cs
 // Open a file to write
 using (var bw = new BinaryViewWriter("file.bin"))
@@ -59,6 +50,7 @@ using (var bw = new BinaryViewWriter("file.bin"))
 }
 ```
 Read
+
 ```cs
 // Open a file to read
 using (var br = new BinaryViewReader("file.bin"))
@@ -86,12 +78,14 @@ using (var br = new BinaryViewReader("file.bin"))
 }
 ```
 ## Example View (symmetrical)
-Uses same code for write and read operations.<br>
+Uses same code for write and read operations.
+
 ```cs
 using GGL.IO;
 using GGL.IO.Compression;
 ```
 View
+
 ```cs
 // Open a file to read
 using (var view = new BinaryView("file.bin", ViewMode.Read /*ViewMode.Write*/))
@@ -128,6 +122,4 @@ using (var view = new BinaryView("file.bin", ViewMode.Read /*ViewMode.Write*/))
 
     view.EndCompressedSection();
 }
-```
-
-## StreamStack
+``` 

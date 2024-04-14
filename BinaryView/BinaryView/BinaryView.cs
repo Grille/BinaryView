@@ -6,7 +6,7 @@ using System.IO;
 namespace GGL.IO;
 public sealed class BinaryView : StreamStackUser
 {
-    readonly bool OwnsStreamStack;
+    public readonly bool OwnsStreamStack;
 
     readonly BinaryViewWriter? _writer;
     readonly BinaryViewReader? _reader;
@@ -169,7 +169,7 @@ public sealed class BinaryView : StreamStackUser
         if (Mode == ViewMode.Read)
             length = Reader.ReadLengthPrefix(lengthPrefix);
         else
-            Writer.WriteLengthPrefix(lengthPrefix, length);
+            Writer.WriteLengthPrefix(length, lengthPrefix);
     }
 
     protected override void Dispose(bool disposing)

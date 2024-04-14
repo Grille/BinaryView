@@ -6,13 +6,12 @@
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <Authors>Paul Hirch</Authors>
         <Description>Classes to easily write and read binary data from streams</Description>
-        <PackageLicenseExpression></PackageLicenseExpression>
-        <FileVersion>1.0</FileVersion>
-        <AssemblyVersion>2.4.2</AssemblyVersion>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
         <PackageId>GGL.BinaryView</PackageId>
+        <!--<PackageId>Grille.IO.BinaryView</PackageId>-->
         <SignAssembly>false</SignAssembly>
-        <Version>2.4.2</Version>
+        <Version>3.0.0</Version>
         <RepositoryUrl>https://github.com/Grille/BinaryView</RepositoryUrl>
         <PackageTags />
         <EnableNETAnalyzers>False</EnableNETAnalyzers>
@@ -20,8 +19,8 @@
         <Title>BinaryView</Title>
         <Owners>Grille</Owners>
         <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-        <Copyright>Copyright (c) 2022 Paul Hirch</Copyright>
-        <RootNamespace>GGL.IO</RootNamespace>
+        <Copyright>Copyright (c) 2024 Paul Hirch</Copyright>
+        <RootNamespace>Grille.IO</RootNamespace>
         <Nullable>Enable</Nullable>
     </PropertyGroup>
 

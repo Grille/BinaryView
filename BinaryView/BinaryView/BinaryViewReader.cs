@@ -20,6 +20,10 @@ public sealed class BinaryViewReader : StreamStackUser
     /// </summary>
     public long LengthPrefixMaxValue { get; set; } = long.MaxValue;
 
+    /// <summary>
+    /// Throw an <see cref="EndOfStreamException"/> on attempt to read beyond end of stream, Default value is true
+    /// </summary>
+    public bool ValidateNotEndOfStream { get; set; } = true;
 
     /// <summary>Initialize BinaryView with a new empty <see cref="MemoryStream"/>.</summary>
     public BinaryViewReader() :
@@ -57,6 +61,7 @@ public sealed class BinaryViewReader : StreamStackUser
     public unsafe T Read<T>() where T : unmanaged
     {
         int size = sizeof(T);
+        AssertBytesInStream(size);
         switch (size)
         {
             case 1:
@@ -79,7 +84,7 @@ public sealed class BinaryViewReader : StreamStackUser
                     var obj = *(T*)&dataPtr[0];
 
                     if (NeedReorder)
-                        EndianUtils.ReverseObjBits(&obj, size, NeedByteReorder, NeedBitReorder);
+                        EndianUtils.ReverseBits(&obj, size, NeedByteReorder, NeedBitReorder);
 
                     return obj;
                 }
@@ -90,6 +95,7 @@ public sealed class BinaryViewReader : StreamStackUser
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public unsafe void ReadToPtr(void* ptr, int size)
     {
+        AssertBytesInStream(size);
         switch (size)
         {
             case 1:
@@ -113,11 +119,20 @@ public sealed class BinaryViewReader : StreamStackUser
                         *((byte*)ptr + i) = Buffer[i];
 
                     if (NeedReorder)
-                        EndianUtils.ReverseObjBits(&ptr, size, NeedByteReorder, NeedBitReorder);
+                        EndianUtils.ReverseBits(&ptr, size, NeedByteReorder, NeedBitReorder);
 
                     return;
                 }
             }
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void AssertBytesInStream(int count)
+    {
+        if (ValidateNotEndOfStream && PeakStream.Position + count > PeakStream.Length)
+        {
+            throw new EndOfStreamException($"The attempted read operation would have read {PeakStream.Position + count - PeakStream.Length} bytes over the end of the stream.");
         }
     }
 
@@ -142,11 +157,11 @@ public sealed class BinaryViewReader : StreamStackUser
         return obj;
     }
 
-    public unsafe T[] ReadArray<T>() where T : unmanaged => ReadArray<T>(LengthPrefix);
+    public T[] ReadArray<T>() where T : unmanaged => ReadArray<T>(LengthPrefix);
 
     /// <summary>Reads a array of unmanaged structs from the stream and increases the position by the size of the array elements, get amount of elements from prefix</summary>
     /// <typeparam name="T"></typeparam> Type of unmanaged struct
-    public unsafe T[] ReadArray<T>(LengthPrefix lengthPrefix) where T : unmanaged
+    public T[] ReadArray<T>(LengthPrefix lengthPrefix) where T : unmanaged
     {
         long length = ReadLengthPrefix(lengthPrefix);
         return ReadArray<T>(length);
@@ -162,6 +177,16 @@ public sealed class BinaryViewReader : StreamStackUser
         return array;
     }
 
+    /// <summary>
+    /// Reads data from the underlying stream into the specified array.
+    /// </summary>
+    /// <typeparam name="T">The type of elements in the array.</typeparam>
+    /// <param name="array">The destination array where data will be read into.</param>
+    /// <param name="count">The number of elements to read.</param>
+    /// <param name="offset">The index in the array at which to start writing.</param>
+    /// <remarks>
+    /// This method reads data from an unmanaged memory stream into the specified array. It is important to ensure that the destination array is large enough to hold the specified number of elements starting at the given offset.
+    /// </remarks>
     public void ReadToArray<T>(T[] array, int count, int offset) where T : unmanaged
     {
         for (int i = 0; i < count; i++) array[offset + i] = Read<T>();
@@ -193,35 +218,52 @@ public sealed class BinaryViewReader : StreamStackUser
         }
     }
 
-    public void ReadToIList<T>(IList<T> dstList, long count) where T : unmanaged => ReadToIList(dstList, count, 0);
+    public void ReadToIList<T>(IList<T> list, long count) where T : unmanaged => ReadToIList(list, count, 0);
 
     /// <summary>Reads a list of unmanaged structs from the stream and increases the position by the size of the array elements, reads no length prefix</summary>
     /// <typeparam name="T"></typeparam> Type of unmanaged struct
-    /// <param name="dstList">Pointer to existing list to write in</param>
+    /// <param name="list">Pointer to existing list to write in</param>
     /// <param name="offset">Offset in list</param>
     /// <param name="count">Amount of elements to read</param>
-    public void ReadToIList<T>(IList<T> dstList, long count, int offset) where T : unmanaged
+    public void ReadToIList<T>(IList<T> list, long count, int offset) where T : unmanaged
     {
-        int listCount = dstList.Count;
+        int listCount = list.Count;
         for (int i = 0; i < count; i++)
         {
             int idx = offset + i;
             var item = Read<T>();
             if (idx >= listCount)
-                dstList.Add(item);
+                list.Add(item);
             else
-                dstList[idx] = item;
+                list[idx] = item;
         }
     }
 
     public void ReadToICollection<T>(ICollection<T> collection) where T : unmanaged => ReadToICollection(collection, LengthPrefix);
 
+    /// <summary>
+    /// Reads data from the provided stream and adds it to the specified collection.
+    /// </summary>
+    /// <typeparam name="T">The type of elements in the collection, which must be unmanaged.</typeparam>
+    /// <param name="collection">The destination collection where data will be added.</param>
+    /// <param name="lengthPrefix">Specifies how the length of the data is represented.</param>
+    /// <remarks>
+    /// <para>This method reads data from the provided <see cref="System.IO.Stream"/> and adds it to the specified collection.</para>
+    /// <para>The length of the data is determined by the specified <paramref name="lengthPrefix"/>.</para>
+    /// <para>It is important to ensure that the destination collection can accommodate the data being read.</para>
+    /// </remarks>
     public void ReadToICollection<T>(ICollection<T> collection, LengthPrefix lengthPrefix) where T : unmanaged
     {
         long length = ReadLengthPrefix(lengthPrefix);
         ReadToICollection(collection, length);
     }
 
+    /// <summary>
+    /// Reads the specified number of items from the stream and adds them to the provided collection.
+    /// </summary>
+    /// <typeparam name="T">The type of items in the collection. Must be unmanaged.</typeparam>
+    /// <param name="collection">The collection where the read items will be added.</param>
+    /// <param name="count">The number of items to read from the source and add to the collection.</param>
     public void ReadToICollection<T>(ICollection<T> collection, long count) where T : unmanaged
     {
         for (int i = 0; i < count; i++)
@@ -248,34 +290,34 @@ public sealed class BinaryViewReader : StreamStackUser
     }
 
     /// <summary>Reads a bool from the stream and increases the position by one byte</summary>
-    public unsafe bool ReadBoolean() => Read<bool>();
+    public bool ReadBoolean() => Read<bool>();
 
     /// <summary>Reads a char from the stream and increases the position by two bytes</summary>
-    public unsafe char ReadChar() => Read<char>();
+    public char ReadChar() => Read<char>();
 
     /// <summary>Reads a byte from the stream and increases the position by one byte</summary>
-    public unsafe byte ReadByte() => Read<byte>();
+    public byte ReadByte() => Read<byte>();
 
     /// <summary>Reads a sbyte from the stream and increases the position by one byte</summary>
-    public unsafe sbyte ReadSByte() => Read<sbyte>();
+    public sbyte ReadSByte() => Read<sbyte>();
 
     /// <summary>Reads a ushort from the stream and increases the position by two bytes</summary>
-    public unsafe ushort ReadUInt16() => Read<ushort>();
+    public ushort ReadUInt16() => Read<ushort>();
 
     /// <summary>Reads a short from the stream and increases the position by two bytes</summary>
-    public unsafe short ReadInt16() => Read<short>();
+    public short ReadInt16() => Read<short>();
 
     /// <summary>Reads a uint from the stream and increases the position by four bytes</summary>
-    public unsafe uint ReadUInt32() => Read<uint>();
+    public uint ReadUInt32() => Read<uint>();
 
     /// <summary>Reads a int from the stream and increases the position by four bytes</summary>
-    public unsafe int ReadInt32() => Read<int>();
+    public int ReadInt32() => Read<int>();
 
     /// <summary>Reads a ulong from the stream and increases the position by eight bytes</summary>
-    public unsafe ulong ReadUInt64() => Read<ulong>();
+    public ulong ReadUInt64() => Read<ulong>();
 
     /// <summary>Reads a long from the stream and increases the position by eight bytes</summary>
-    public unsafe long ReadInt64() => Read<long>();
+    public long ReadInt64() => Read<long>();
 
 #if NET5_0_OR_GREATER
     /// <summary>Reads a half from the stream and increases the position by two bytes</summary>
@@ -283,15 +325,19 @@ public sealed class BinaryViewReader : StreamStackUser
 #endif
 
     /// <summary>Reads a float from the stream and increases the position by four bytes</summary>
-    public unsafe float ReadSingle() => Read<float>();
+    public float ReadSingle() => Read<float>();
 
     /// <summary>Reads a double from the stream and increases the position by eight bytes</summary>
-    public unsafe double ReadDouble() => Read<double>();
+    public double ReadDouble() => Read<double>();
 
     /// <summary>Reads a decimal from the stream and increases the position by sixteen bytes</summary>
-    public unsafe decimal ReadDecimal() => Read<decimal>();
+    public decimal ReadDecimal() => Read<decimal>();
 
     public string ReadString() => ReadString(LengthPrefix, Encoding);
+
+    public string ReadString(Encoding encoding) => ReadString(LengthPrefix, encoding);
+
+    public string ReadString(LengthPrefix lengthPrefix) => ReadString(lengthPrefix, Encoding);
 
     /// <summary>Reads a byte-array as string from the stream</summary>
     public string ReadString(LengthPrefix lengthPrefix, Encoding encoding)
@@ -299,6 +345,8 @@ public sealed class BinaryViewReader : StreamStackUser
         long length = ReadLengthPrefix(lengthPrefix);
         return ReadString(length, encoding);
     }
+
+
 
     public string ReadString(long length) => ReadString(length, Encoding);
 
@@ -362,14 +410,25 @@ public sealed class BinaryViewReader : StreamStackUser
     }
 
     /// <summary>Reads a array of string from the stream</summary>
-    public string[] ReadStringArray(LengthPrefix arrayPrefix = LengthPrefix.Default, LengthPrefix stringPrefix = LengthPrefix.Default)
+    public string[] ReadStringArray()
     {
         var encoding = Encoding;
-        long length = ReadLengthPrefix(arrayPrefix);
+        long length = ReadLengthPrefix();
         string[] retData = new string[length];
-        for (int i = 0; i < retData.Length; i++) retData[i] = ReadString(stringPrefix, encoding);
+        for (int i = 0; i < retData.Length; i++) retData[i] = ReadString(encoding);
         return retData;
     }
+
+    private long ReadCustomLengthPrefix()
+    {
+        if (CustomLengthPrefixHandler == null)
+            throw new InvalidOperationException("CustomLengthPrefixHandler is not set.");
+
+        CustomLengthPrefixHandler.ReadFromView(this);
+        return CustomLengthPrefixHandler.Length;
+    }
+
+    public long ReadLengthPrefix() => ReadLengthPrefix(LengthPrefix);
 
     public long ReadLengthPrefix(LengthPrefix lengthPrefix)
     {
@@ -388,6 +447,7 @@ public sealed class BinaryViewReader : StreamStackUser
             LengthPrefix.Double => (long)ReadDouble(),
             LengthPrefix.UIntSmart15 => (long)ReadIView<UIntSmart15>(),
             LengthPrefix.UIntSmart62 => (long)ReadIView<UIntSmart62>(),
+            LengthPrefix.Custom => ReadCustomLengthPrefix(),
             _ => throw new ArgumentOutOfRangeException(nameof(lengthPrefix))
         };
 

@@ -3,7 +3,10 @@ using System.Runtime.InteropServices;
 
 namespace GGL.IO.Compression;
 
-public struct UIntSmart15 : IViewObject
+/// <summary>
+/// This ValueType has a fixed size of 2 bytes, only if used trough the <see cref="IViewObject"/> interface its variable size comes into effect.
+/// </summary>
+public struct UIntSmart15 : ILengthPrefix
 {
     public const short MaxValue15Bit = (1 << 15) - 1;
     public const short MaxValue7Bit = (1 << 7) - 1;
@@ -12,6 +15,8 @@ public struct UIntSmart15 : IViewObject
     public const short MinValue = 0;
 
     short value;
+
+    public long Length { get => value; set => this.value = (short)value; }
 
     public UIntSmart15(short value)
     {
@@ -42,7 +47,7 @@ public struct UIntSmart15 : IViewObject
     {
         if (value > MaxValue15Bit)
         {
-            throw new Exception();
+            throw new ArgumentException();
         }
         else if (value > MaxValue7Bit)
         {
@@ -55,13 +60,15 @@ public struct UIntSmart15 : IViewObject
         }
         else
         {
-            throw new Exception();
+            throw new ArgumentException();
         }
     }
 }
 
-
-public struct UIntSmart62 : IViewObject
+/// <summary>
+/// This ValueType has a fixed size of 8 bytes, only if used trough the <see cref="IViewObject"/> interface its variable size comes into effect.
+/// </summary>
+public struct UIntSmart62 : ILengthPrefix
 {
     public const long MaxValue62Bit = (1L << 62) - 1;
     public const long MaxValue30Bit = (1L << 30) - 1;
@@ -72,6 +79,8 @@ public struct UIntSmart62 : IViewObject
     public const long MinValue = 0;
 
     long value;
+
+    public long Length { get => value; set => this.value = value; }
 
     public UIntSmart62(long value)
     {
@@ -101,7 +110,7 @@ public struct UIntSmart62 : IViewObject
     {
         if (value > MaxValue62Bit)
         {
-            throw new Exception();
+            throw new ArgumentException();
         }
         else if (value > MaxValue30Bit)
         {
@@ -124,7 +133,7 @@ public struct UIntSmart62 : IViewObject
         }
         else
         {
-            throw new Exception();
+            throw new ArgumentException();
         }
     }
 }

@@ -92,7 +92,7 @@ public sealed class BinaryViewWriter : StreamStackUser
             {
                 AssureBufferSize(size);
                 if (NeedReorder)
-                    EndianUtils.ReverseObjBits(ptr, size, NeedByteReorder, NeedBitReorder);
+                    EndianUtils.ReverseBits(ptr, size, NeedByteReorder, NeedBitReorder);
 
                 for (int i = 0; i < size; i++)
                     Buffer[i] = *((byte*)ptr + i);
@@ -130,7 +130,7 @@ public sealed class BinaryViewWriter : StreamStackUser
     /// <param name="lengthPrefix"></param>
     public void WriteArray<T>(T[] array, LengthPrefix lengthPrefix) where T : unmanaged
     {
-        WriteLengthPrefix(lengthPrefix, array.Length);
+        WriteLengthPrefix(array.Length, lengthPrefix);
         for (int i = 0; i < array.Length; i++) Write(array[i]);
     }
 
@@ -142,7 +142,7 @@ public sealed class BinaryViewWriter : StreamStackUser
     /// <param name="lengthPrefix"></param>
     public void WriteIList<T>(IList<T> list, LengthPrefix lengthPrefix) where T : unmanaged
     {
-        WriteLengthPrefix(lengthPrefix, list.Count);
+        WriteLengthPrefix(list.Count, lengthPrefix);
         for (int i = 0; i < list.Count; i++) Write(list[i]);
     }
 
@@ -160,7 +160,7 @@ public sealed class BinaryViewWriter : StreamStackUser
 
     public void WriteICollection<T>(ICollection<T> collection, LengthPrefix lengthPrefix) where T : unmanaged
     {
-        WriteLengthPrefix(lengthPrefix, collection.Count);
+        WriteLengthPrefix(collection.Count, lengthPrefix);
         foreach (var item in collection)
         {
             Write(item);
@@ -230,15 +230,19 @@ public sealed class BinaryViewWriter : StreamStackUser
 
     public void WriteString(string input) => WriteString(input, LengthPrefix, Encoding);
 
+    public void WriteString(string input, LengthPrefix lengthPrefix) => WriteString(input, lengthPrefix, Encoding);
+
+    public void WriteString(string input, Encoding encoding) => WriteString(input, LengthPrefix, encoding);
+
     /// <summary>Writes a string as byte array with an length prefix.</summary>
     public void WriteString(string input, LengthPrefix lengthPrefix, Encoding encoding)
     {
         var bytes = GetEncodingBytes(input, encoding);
 
         if (StringLengthMode == StringLengthMode.CharCount)
-            WriteLengthPrefix(lengthPrefix, input.Length);
+            WriteLengthPrefix(input.Length, lengthPrefix);
         else
-            WriteLengthPrefix(lengthPrefix, bytes.Length);
+            WriteLengthPrefix(bytes.Length, lengthPrefix);
 
         WriteArray(bytes, LengthPrefix.None);
     }
@@ -264,10 +268,10 @@ public sealed class BinaryViewWriter : StreamStackUser
     }
 
     /// <summary>Writes a array of strings</summary>
-    public void WriteStringArray(string[] input, LengthPrefix arrayPrefix = LengthPrefix.Default, LengthPrefix stringPrefix = LengthPrefix.Default)
+    public void WriteStringArray(string[] input)
     {
-        WriteLengthPrefix(arrayPrefix, input.Length);
-        for (int i = 0; i < input.Length; i++) WriteString(input[i], stringPrefix, Encoding);
+        WriteLengthPrefix(input.Length);
+        for (int i = 0; i < input.Length; i++) WriteString(input[i], Encoding);
     }
 
     private bool DoValidateLengthPrefix(LengthPrefix lengthPrefix, long length) => lengthPrefix switch
@@ -286,11 +290,22 @@ public sealed class BinaryViewWriter : StreamStackUser
         LengthPrefix.Double => length == (long)(double)length,
         LengthPrefix.UIntSmart15 => length == (long)(UIntSmart15)length,
         LengthPrefix.UIntSmart62 => length == (long)(UIntSmart62)length,
+        LengthPrefix.Custom => true,
         _ => throw new ArgumentOutOfRangeException(nameof(lengthPrefix), lengthPrefix.ToString())
     };
 
+    private void WriteCustomLengthPrefix(long length)
+    {
+        if (CustomLengthPrefixHandler == null)
+            throw new InvalidOperationException("CustomLengthPrefixHandler is not set.");
 
-    public void WriteLengthPrefix(LengthPrefix lengthPrefix, long length)
+        CustomLengthPrefixHandler.Length = length;
+        CustomLengthPrefixHandler.WriteToView(this);
+    }
+
+    public void WriteLengthPrefix(long length) => WriteLengthPrefix(length, LengthPrefix);
+
+    public void WriteLengthPrefix(long length, LengthPrefix lengthPrefix)
     {
         if (ValidateLengthPrefix && !DoValidateLengthPrefix(lengthPrefix, length))
         {
@@ -302,7 +317,7 @@ public sealed class BinaryViewWriter : StreamStackUser
             case LengthPrefix.None:
                 return;
             case LengthPrefix.Default:
-                WriteLengthPrefix(LengthPrefix, length);
+                WriteLengthPrefix(length, LengthPrefix);
                 return;
             case LengthPrefix.SByte:
                 WriteSByte((sbyte)length);
@@ -339,6 +354,9 @@ public sealed class BinaryViewWriter : StreamStackUser
                 return;
             case LengthPrefix.UIntSmart62:
                 WriteIView((UIntSmart62)length);
+                return;
+            case LengthPrefix.Custom:
+                WriteCustomLengthPrefix(length);
                 return;
             default:
                 throw new ArgumentOutOfRangeException();

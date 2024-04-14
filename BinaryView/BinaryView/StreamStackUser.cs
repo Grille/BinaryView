@@ -6,6 +6,7 @@ using System.Runtime.Serialization.Formatters.Binary;
 using System.Runtime.Serialization;
 
 namespace GGL.IO;
+
 public abstract class StreamStackUser : IDisposable
 {
     protected byte[] Buffer { get; private set; }
@@ -14,6 +15,8 @@ public abstract class StreamStackUser : IDisposable
     private int _bufferSize = 0;
     private LengthPrefix _lengthPrefix = LengthPrefix.UInt32;
     private Endianness _byteOrder = Endianness.System;
+
+    public ILengthPrefix? CustomLengthPrefixHandler;
 
     protected bool NeedBitReorder { get; private set; } = false;
     protected bool NeedByteReorder { get; private set; } = false;

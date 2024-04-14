@@ -147,5 +147,18 @@ partial class Section
 
             Succes();
         });
+
+        Test("Read out of bounds", () => {
+            using var test = new TestData();
+            var bw = test.Writer;
+            var br = test.Reader;
+
+            var list = new List<int>();
+
+            AssertThrows<EndOfStreamException>(() =>
+            {
+                br.ReadToIList(list, 1000000);
+            });
+        });
     }
 }

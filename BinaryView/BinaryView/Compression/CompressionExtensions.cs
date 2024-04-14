@@ -9,7 +9,7 @@ public static class CompressionExtensions
 {
     // Read
     /// <summary>All Data after this will be read as compressed</summary>
-    public static void CompressAll(this BinaryViewReader br, CompressionType type)
+    public static void DecompressAll(this BinaryViewReader br, CompressionType type)
     {
         br.StreamStack.Push(new DecompressorStackEntry(br, type, br.Remaining));
     }
@@ -62,10 +62,10 @@ public static class CompressionExtensions
 
     // view
     /// <summary>All Data after this will be compressed</summary>
-    public static void CompressAll(this BinaryView view, CompressionType type, CompressionLevel level = CompressionLevel.Optimal)
+    public static void DeCompressAll(this BinaryView view, CompressionType type, CompressionLevel level = CompressionLevel.Optimal)
     {
         if (view.Mode == ViewMode.Read)
-            view.Reader!.CompressAll(type);
+            view.Reader!.DecompressAll(type);
         else
             view.Writer!.CompressAll(type, level);
     }

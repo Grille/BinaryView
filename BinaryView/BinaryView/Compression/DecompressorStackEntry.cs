@@ -3,9 +3,9 @@
 namespace GGL.IO.Compression;
 public class DecompressorStackEntry : StreamStackEntry
 {
-    public readonly BinaryViewReader Reader;
-    public readonly CompressionType Type;
-    public readonly long Length;
+    public BinaryViewReader Reader { get; }
+    public CompressionType Type { get; }
+    public long Length { get; }
 
     public DecompressorStackEntry(BinaryViewReader br, CompressionType type, long length) : base(br.StreamStack, new MemoryStream(), false)
     {

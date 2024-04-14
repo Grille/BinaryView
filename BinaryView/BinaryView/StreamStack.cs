@@ -104,6 +104,16 @@ public class StreamStack : IDisposable
         Pop().Dispose();
     }
 
+    /// <summary>
+    /// Get a stream wrapper beginning from the current position.
+    /// </summary>
+    public Stream GetSubStream() => GetSubStream(Peak.Stream.Length - Peak.Stream.Position);
+
+    /// <summary>
+    /// Get a stream wrapper beginning from the current position.
+    /// </summary>
+    /// <param name="length"></param>
+    /// <returns></returns>
     public Stream GetSubStream(long length)
     {
         var peakStream = Peek().Stream;

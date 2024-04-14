@@ -27,11 +27,8 @@ static class Tests
             var bw = data.Writer;
             var br = data.Reader;
 
-            var writeInfo = typeof(BinaryViewWriter).GetMethod($"Write{typeName}");
-            var write = (Action<T>)writeInfo.CreateDelegate(typeof(Action<T>), bw);
-
-            var readInfo = typeof(BinaryViewReader).GetMethod($"Read{typeName}");
-            var read = (Func<T>)readInfo.CreateDelegate(typeof(Func<T>), br);
+            var write = ReflectionUtils.CreateDelegate<BinaryViewWriter, Action<T>>(bw, $"Write{typeName}");
+            var read = ReflectionUtils.CreateDelegate<BinaryViewReader, Func<T>>(br, $"Read{typeName}");
 
             data.Seek(0);
             write(input);
@@ -131,13 +128,13 @@ static class Tests
 
     public static void Endianness<T>(string pattern, T input, T mask) where T : unmanaged
     {
-        Test($"endianness {typeof(T).Name} ({input}) {pattern}", () =>
+        Grille.ConsoleTestLib.GlobalTestSystem.Test($"endianness {typeof(T).Name} ({input}) {pattern}", (Action)(() =>
         {
             using var data = new TestData();
             var bw = data.Writer;
             var br = data.Reader;
 
-            Endianness endianness = pattern[0] == 'L' ? GGL.IO.Endianness.LittleEndian : GGL.IO.Endianness.BigEndian;
+            var endianness = pattern[0] == 'L' ? GGL.IO.Endianness.LittleEndian : GGL.IO.Endianness.BigEndian;
             bool reverseBits = pattern[1] == '1' ? true : false;
 
             bw.Endianness = br.Endianness = endianness;
@@ -151,17 +148,17 @@ static class Tests
 
             data.ResetPos();
 
-            T result = br.Read<T>();
+            var result = br.Read<T>();
             int rSize = data.PopPos();
 
-            AssertIsEqual(rSize, wSize);
+            Grille.ConsoleTestLib.UsingSyntaxAsserts.AssertIsEqual(rSize, wSize);
 
             data.ResetPos();
 
-            AssertIsEqual(result, input);
+            Grille.ConsoleTestLib.UsingSyntaxAsserts.AssertIsEqual(result, input);
 
-            Succes($"{wSize}b {cmpmask}");
-        });
+            Grille.ConsoleTestLib.TestResult.Succes($"{wSize}b {cmpmask}");
+        }));
     }
 
     public static void WriteReadGeneric<T>(T input) where T : unmanaged
@@ -227,7 +224,7 @@ static class Tests
             */
         });
     }
-    public static void WriteReadStringArray(string typeName, string[] input, LengthPrefix lengthPrefix = LengthPrefix.Default)
+    public static void WriteReadStringArray(string typeName, string[] input, LengthPrefix lengthPrefix = LengthPrefix.Int32)
     {
         Test($"read/write {typeof(string).Name}[].length:{lengthPrefix} ({MessageUtils.IListToString(input)})", () =>
         {
@@ -235,16 +232,15 @@ static class Tests
             var bw = data.Writer;
             var br = data.Reader;
 
-            var writeInfo = typeof(BinaryViewWriter).GetMethod($"Write{typeName}");
-            var write = (Action<string[], LengthPrefix, LengthPrefix>)writeInfo.CreateDelegate(typeof(Action<string[], LengthPrefix, LengthPrefix>), bw);
+            bw.LengthPrefix = lengthPrefix;
+            br.LengthPrefix = lengthPrefix;
 
-            var readInfo = typeof(BinaryViewReader).GetMethod($"Read{typeName}");
-            var read = (Func<LengthPrefix, LengthPrefix, string[]>)readInfo.CreateDelegate(typeof(Func<LengthPrefix, LengthPrefix, string[]>), br);
+            var write = ReflectionUtils.CreateDelegate<BinaryViewWriter, Action<string[]>>(bw, $"Write{typeName}");
+            var read = ReflectionUtils.CreateDelegate<BinaryViewReader, Func<string[]>>(br, $"Read{typeName}");
 
-
-            write(input, lengthPrefix, lengthPrefix);
+            write(input);
             data.ResetPos();
-            string[] result = read(lengthPrefix, lengthPrefix);
+            string[] result = read();
             if (input.Length != result.Length)
             {
                 Fail($"length not equal{input.Length}!={result.Length}");
@@ -286,7 +282,7 @@ static class Tests
 
             data.ResetPos();
 
-            void Func() => bw.WriteLengthPrefix(lengthPrefix, value);
+            void Func() => bw.WriteLengthPrefix(value, lengthPrefix);
             if (expectException)
             {
                 AssertThrows<InvalidCastException>(Func);
@@ -318,12 +314,36 @@ static class Tests
             bw.ValidateLengthPrefix = false;
 
             data.ResetPos();
-            bw.WriteLengthPrefix(lengthPrefix, value);
+            bw.WriteLengthPrefix(value, lengthPrefix);
 
             AssertIsEqual(expectedSize, bw.Position, "Size");
 
             data.ResetPos();
             long result = br.ReadLengthPrefix(lengthPrefix);
+            AssertMatchBits(expectedValue, result);
+
+            Succes($"size:{expectedSize} original:{value} value:{result}");
+        });
+    }
+
+    public static void WriteReadCustomPrefix(ILengthPrefix lengthPrefix, long value, long expectedValue, int expectedSize)
+    {
+        Test($"read/write prefix:{LengthPrefix.Custom}:{lengthPrefix.GetType().Name}({value})", () =>
+        {
+            using var data = new TestData();
+            var bw = data.Writer;
+            var br = data.Reader;
+
+            bw.CustomLengthPrefixHandler = lengthPrefix;
+            br.CustomLengthPrefixHandler = lengthPrefix;
+
+            data.ResetPos();
+            bw.WriteLengthPrefix(value, LengthPrefix.Custom);
+
+            AssertIsEqual(expectedSize, bw.Position, "Size");
+
+            data.ResetPos();
+            long result = br.ReadLengthPrefix(LengthPrefix.Custom);
             AssertMatchBits(expectedValue, result);
 
             Succes($"size:{expectedSize} original:{value} value:{result}");
@@ -363,7 +383,7 @@ static class Tests
                 {
                     if (compressed)
                     {
-                        binaryView.CompressAll(CompressionType.Deflate);
+                        binaryView.DecompressAll(CompressionType.Deflate);
                     }
                     result &= binaryView.ReadString() == map.Name;
                     result &= binaryView.ReadInt32() == map.Size;
@@ -395,7 +415,7 @@ static class Tests
             {
                 if (compressed)
                 {
-                    view.CompressAll(CompressionType.Deflate);
+                    view.DeCompressAll(CompressionType.Deflate);
                 }
                 view.String(ref map.Name);
                 view.Int32(ref map.Size);

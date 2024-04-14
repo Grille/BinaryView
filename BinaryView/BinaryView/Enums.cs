@@ -25,6 +25,8 @@ public enum LengthPrefix
     /// <summary>Writes no length-prefix, can only be used for write operations.</summary>
     None,
 
+    Custom,
+
     SByte,
     Byte,
     Int16,
