@@ -1,7 +1,8 @@
 ﻿using System.IO;
 using System.IO.Compression;
+using Grille.IO.Internal;
 
-namespace GGL.IO.Compression;
+namespace Grille.IO.Compression;
 public class CompressorStackEntry : StreamStackEntry
 {
     public BinaryViewWriter Writer { get; }

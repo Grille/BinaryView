@@ -4,9 +4,13 @@ using System.Text;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Runtime.Serialization;
+using Grille.IO.Interfaces;
 
-namespace GGL.IO;
+namespace Grille.IO.Internal;
 
+/// <summary>
+/// Base class for <see cref="BinaryView"/>, <see cref="BinaryViewReader"/> and <see cref="BinaryViewWriter"/>, should not be used directly.
+/// </summary>
 public abstract class StreamStackUser : IDisposable
 {
     protected byte[] Buffer { get; private set; }
@@ -66,9 +70,7 @@ public abstract class StreamStackUser : IDisposable
         get => _encoding;
         set
         {
-            if (value == null)
-                throw new ArgumentNullException(nameof(value));
-            _encoding = value;
+            _encoding = value ?? throw new ArgumentNullException(nameof(value));
         }
     }
 
@@ -88,7 +90,7 @@ public abstract class StreamStackUser : IDisposable
 
     public StreamStack StreamStack { get; }
 
-    public Stream PeakStream => StreamStack.Peak.Stream; 
+    public Stream PeakStream => StreamStack.Peak.Stream;
 
     /// <inheritdoc cref="MemoryStream.Position"/>
     public long Position
@@ -141,7 +143,7 @@ public abstract class StreamStackUser : IDisposable
     /// <summary>Returns current Position, executes Stream.Seek after.</summary>
     public long Exch(long offset, SeekOrigin origin = SeekOrigin.Begin)
     {
-        long pos = PeakStream.Position;
+        var pos = PeakStream.Position;
         PeakStream.Seek(offset, origin);
         return pos;
     }

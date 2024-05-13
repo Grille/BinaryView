@@ -4,7 +4,7 @@ using System.Text;
 using System.IO;
 using System.Collections;
 
-namespace GGL.IO;
+namespace Grille.IO.Internal;
 public class StreamStack : IDisposable
 {
     readonly Stack<StreamStackEntry> _stack;
@@ -45,7 +45,7 @@ public class StreamStack : IDisposable
 
     public StreamStackEntry Peek() => _stack.Peek();
 
-    public void Push(Stream stream, bool leaveOpen)
+    public void Push(Stream stream, bool leaveOpen = true)
     {
         Push(new(this, stream, leaveOpen));
     }
@@ -74,7 +74,7 @@ public class StreamStack : IDisposable
     public void CopyToPeak(Stream dataStream, bool keepPosition = false)
     {
         var peakStream = Peak.Stream;
-        long pos = peakStream.Position;
+        var pos = peakStream.Position;
         dataStream.CopyTo(peakStream);
         if (keepPosition)
             peakStream.Position = pos;
@@ -84,7 +84,7 @@ public class StreamStack : IDisposable
     {
         var dstStream = Peak.Stream;
 
-        int pos = (int)dstStream.Position;
+        var pos = (int)dstStream.Position;
         var buffer = new MemoryStream();
 
         dstStream.CopyTo(buffer);

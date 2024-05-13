@@ -6,6 +6,8 @@ using System.Text;
 using System.Threading.Tasks;
 using Dia2Lib;
 
+using Grille.IO.Internal;
+
 namespace BinaryView_Tests;
 partial class Section
 {

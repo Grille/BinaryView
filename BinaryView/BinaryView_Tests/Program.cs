@@ -12,8 +12,6 @@ class Program
 
     static unsafe void Main(string[] args)
     {
-        var sw = Stopwatch.StartNew();
-
         Printer = new StandardConsolePrinter()
         {
             PrintFailAsException = false,
@@ -22,6 +20,7 @@ class Program
         Section.CreateDispose();
         Section.PrimitiveTypes();
         Section.GenericTypes();
+        Section.Unsafe();
         Section.Endianness();
         Section.Prefix();
         Section.Strings();

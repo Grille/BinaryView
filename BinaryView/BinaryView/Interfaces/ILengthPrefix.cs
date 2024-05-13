@@ -4,12 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BinaryView_Tests;
-
-internal enum TestResult
+namespace Grille.IO.Interfaces;
+public interface ILengthPrefix : IBinaryViewObject
 {
-    Success,
-    Failure,
-    Error,
+    public long Length { get; set; }
 }
-

@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace GGL.IO;
+namespace Grille.IO.Interfaces;
 
 /// <summary>
 /// Allows object to be serialized by IView Functions
 /// </summary>
-public interface IViewObject : IViewReadable, IViewWritable { }
+public interface IBinaryViewObject : IBinaryViewReadable, IBinaryViewWritable { }

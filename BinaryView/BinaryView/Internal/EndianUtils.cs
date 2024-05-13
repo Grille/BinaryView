@@ -3,7 +3,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Text;
 
-namespace GGL.IO;
+namespace Grille.IO.Internal;
 internal static class EndianUtils
 {
     public static readonly bool IsLittleEndian = BitConverter.IsLittleEndian;
@@ -57,57 +57,57 @@ internal static class EndianUtils
 
     public static unsafe void ReverseBits(void* obj, int size, bool byteReorder, bool bitReorder)
     {
-        byte* ptr = (byte*)obj;
+        var ptr = (byte*)obj;
 
-        int idxend = size - 1;
-        int hsize = size / 2;
+        var idxend = size - 1;
+        var hsize = size / 2;
 
-        int flag = *(byte*)&byteReorder | (*(byte*)&bitReorder << 1);
+        var flag = *(byte*)&byteReorder | *(byte*)&bitReorder << 1;
 
         switch (flag)
         {
             case 1: // byte only
-            {
-                for (int i = 0; i < hsize; i++)
                 {
-                    int idx0 = i;
-                    int idx1 = idxend - i;
+                    for (var i = 0; i < hsize; i++)
+                    {
+                        var idx0 = i;
+                        var idx1 = idxend - i;
 
-                    byte val0 = ptr[idx0];
-                    ptr[idx0] = ptr[idx1];
-                    ptr[idx1] = val0;
+                        var val0 = ptr[idx0];
+                        ptr[idx0] = ptr[idx1];
+                        ptr[idx1] = val0;
+                    }
+
+                    return;
                 }
-
-                return;
-            }
             case 2: // bit only
-            {
-                for (int i = 0; i < size; i++)
                 {
-                    ptr[i] = BitReverseTable[ptr[i]];
-                }
+                    for (var i = 0; i < size; i++)
+                    {
+                        ptr[i] = BitReverseTable[ptr[i]];
+                    }
 
-                return;
-            }
+                    return;
+                }
             case 3: // byte & bit
-            {
-                for (int i = 0; i < hsize; i++)
                 {
-                    int idx0 = i;
-                    int idx1 = idxend - i;
+                    for (var i = 0; i < hsize; i++)
+                    {
+                        var idx0 = i;
+                        var idx1 = idxend - i;
 
-                    byte val0 = ptr[idx0];
-                    ptr[idx0] = BitReverseTable[ptr[idx1]];
-                    ptr[idx1] = BitReverseTable[val0];
+                        var val0 = ptr[idx0];
+                        ptr[idx0] = BitReverseTable[ptr[idx1]];
+                        ptr[idx1] = BitReverseTable[val0];
+                    }
+
+                    var rest = size % 2 != 0;
+
+                    if (rest)
+                        ptr[hsize] = BitReverseTable[ptr[hsize]];
+
+                    return;
                 }
-
-                bool rest = size % 2 != 0;
-
-                if (rest)
-                    ptr[hsize] = BitReverseTable[ptr[hsize]];
-
-                return;
-            }
 
         }
 

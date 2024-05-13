@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.IO;
 
-namespace GGL.IO;
+namespace Grille.IO.Internal;
 
 internal class ReadonlySubStream : Stream
 {
@@ -23,7 +23,7 @@ internal class ReadonlySubStream : Stream
 
     public override int ReadByte()
     {
-        long remaining = length - (position + offset);
+        var remaining = length - (position + offset);
         if (remaining > 0)
             return baseStream.ReadByte();
         return -1;
@@ -31,18 +31,18 @@ internal class ReadonlySubStream : Stream
 
     public override int Read(byte[] buffer, int offset, int count)
     {
-        long remaining = length - (position + offset);
+        var remaining = length - (position + offset);
         count = Math.Min(count, (int)remaining);
         if (count <= 0)
             return 0;
-        int read = baseStream.Read(buffer, offset, count);
+        var read = baseStream.Read(buffer, offset, count);
         position += read;
         return read;
     }
 
     public override long Seek(long offset, SeekOrigin origin)
     {
-        long pos = position;
+        var pos = position;
 
         if (origin == SeekOrigin.Begin)
             pos = offset;

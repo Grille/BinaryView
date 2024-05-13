@@ -1,6 +1,7 @@
 ﻿using System.IO;
+using Grille.IO.Internal;
 
-namespace GGL.IO.Compression;
+namespace Grille.IO.Compression;
 public class DecompressorStackEntry : StreamStackEntry
 {
     public BinaryViewReader Reader { get; }

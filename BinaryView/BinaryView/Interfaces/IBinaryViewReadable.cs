@@ -2,12 +2,12 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace GGL.IO;
+namespace Grille.IO.Interfaces;
 
 /// <summary>
 /// Allows object to be read by ReadIView Function
 /// </summary>
-public interface IViewReadable
+public interface IBinaryViewReadable
 {
     public void ReadFromView(BinaryViewReader br);
 }

@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using GGL.IO;
 using BinaryView_Tests.Framework;
 using System.Drawing;
+using Grille.IO.Interfaces;
 
 namespace BinaryView_Tests;
 
@@ -44,7 +44,7 @@ public unsafe struct UInt24
     }
 }
 
-public class InterfaceImplementationView : IViewObject
+public class InterfaceImplementationView : IBinaryViewObject
 {
     public string Name;
     public int A, B;
@@ -73,7 +73,7 @@ public class InterfaceImplementationView : IViewObject
     public void WriteToView(BinaryViewWriter bw) => View(bw);
 }
 
-public class InterfaceImplementation : IViewObject
+public class InterfaceImplementation : IBinaryViewObject
 {
 
     public int A, B;

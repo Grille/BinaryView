@@ -2,12 +2,12 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace GGL.IO;
+namespace Grille.IO.Interfaces;
 
 /// <summary>
 /// Allows object to be writen by WriteIView Function
 /// </summary>
-public interface IViewWritable
+public interface IBinaryViewWritable
 {
     public void WriteToView(BinaryViewWriter bw);
 }

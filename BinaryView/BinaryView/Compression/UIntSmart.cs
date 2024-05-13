@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Runtime.InteropServices;
+using Grille.IO.Interfaces;
 
-namespace GGL.IO.Compression;
+namespace Grille.IO.Compression;
 
 /// <summary>
-/// This ValueType has a fixed size of 2 bytes, only if used trough the <see cref="IViewObject"/> interface its variable size comes into effect.
+/// This ValueType has a fixed size of 2 bytes, only if used trough the <see cref="IBinaryViewObject"/> interface its variable size comes into effect.
 /// </summary>
 public struct UIntSmart15 : ILengthPrefix
 {
@@ -66,7 +67,7 @@ public struct UIntSmart15 : ILengthPrefix
 }
 
 /// <summary>
-/// This ValueType has a fixed size of 8 bytes, only if used trough the <see cref="IViewObject"/> interface its variable size comes into effect.
+/// This ValueType has a fixed size of 8 bytes, only if used trough the <see cref="IBinaryViewObject"/> interface its variable size comes into effect.
 /// </summary>
 public struct UIntSmart62 : ILengthPrefix
 {

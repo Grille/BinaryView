@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using SysIOC = System.IO.Compression;
 
-namespace GGL.IO;
+namespace Grille.IO;
 
 public enum ViewMode
 {

@@ -8,9 +8,11 @@ using System.Collections.Generic;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Runtime.CompilerServices;
-using GGL.IO.Compression;
+using Grille.IO.Compression;
+using Grille.IO.Interfaces;
+using Grille.IO.Internal;
 
-namespace GGL.IO;
+namespace Grille.IO;
 
 public sealed class BinaryViewWriter : StreamStackUser
 {
@@ -29,7 +31,7 @@ public sealed class BinaryViewWriter : StreamStackUser
     /// </summary>
     /// <remarks>
     /// This check is relatively expensive and is only useful when using Encodings with a limited character set like <see cref="Encoding.ASCII"/>.<br/>
-    /// A failure here will not result in a corrupted stream, only the string will be broken.
+    /// A failure here will not result in a corrupted stream, only the read string will have an incorrect value.
     /// </remarks>
     public bool ValidateEncoding { get; set; } = false;
 
@@ -38,7 +40,7 @@ public sealed class BinaryViewWriter : StreamStackUser
     /// Default value is <c>true</c>
     /// </summary>
     /// <remarks>
-    /// If undetected, this will corrupt your stream, attempts to later read this string or any data after will probably fail.
+    /// If undetected, this will corrupt your stream, later attempts to read this string or any data after will probably fail.
     /// </remarks>
     public bool ValidateTerminatedString { get; set; } = true;
 
@@ -71,17 +73,18 @@ public sealed class BinaryViewWriter : StreamStackUser
     /// <param name="obj">Struct to write</param>
     public unsafe void Write<T>(T obj) where T : unmanaged
     {
-        WriteFromPtr(&obj, sizeof(T));
+        WriteFromPtr(&obj);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public unsafe void WriteFromPtr(void* ptr, int size)
+    public unsafe void WriteFromPtr(void* ptr, int byteSize)
     {
-        switch (size)
+        var bytePtr = (byte*)ptr;
+        switch (byteSize)
         {
             case 1:
             {
-                byte value = *(byte*)ptr;
+                byte value = *bytePtr;
                 if (NeedBitReorder)
                     value = EndianUtils.BitReverseTable[value];
 
@@ -90,31 +93,39 @@ public sealed class BinaryViewWriter : StreamStackUser
             }
             default:
             {
-                AssureBufferSize(size);
+                AssureBufferSize(byteSize);
                 if (NeedReorder)
-                    EndianUtils.ReverseBits(ptr, size, NeedByteReorder, NeedBitReorder);
+                    EndianUtils.ReverseBits(ptr, byteSize, NeedByteReorder, NeedBitReorder);
 
-                for (int i = 0; i < size; i++)
-                    Buffer[i] = *((byte*)ptr + i);
+                for (int i = 0; i < byteSize; i++)
+                    Buffer[i] = bytePtr[i];
 
-                PeakStream.Write(Buffer, 0, size);
+                PeakStream.Write(Buffer, 0, byteSize);
                 return;
             }
         }
     }
 
-    public unsafe void WriteFromPtr(void* ptr, int size, int offset)
+    public unsafe void WriteFromPtr(IntPtr ptr, int byteSize)
     {
-        WriteFromPtr((byte*)ptr + offset, size);
+        WriteFromPtr((void*)ptr, byteSize);
     }
 
-    public unsafe void WriteFromPtr(IntPtr ptr, int size, int offset)
+    public unsafe void WriteFromPtr<T>(T* ptr) where T : unmanaged
     {
-        WriteFromPtr((byte*)ptr + offset, size);
+        WriteFromPtr(ptr, sizeof(T));
+    }
+
+    public unsafe void WriteFromRef<T>(ref T obj) where T : unmanaged
+    {
+        fixed (T* ptr = &obj)
+        {
+            WriteFromPtr(ptr);
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void WriteIView<T>(T obj) where T : IViewWritable
+    public void WriteIView<T>(T obj) where T : IBinaryViewWritable
     {
         obj.WriteToView(this);
     }
@@ -151,7 +162,7 @@ public sealed class BinaryViewWriter : StreamStackUser
     /// <param name="list">List of unmanaged structs to write</param>
     /// <param name="offset">start offset in the array</param>
     /// <param name="count">number of elements to be written</param>
-    public void WriteIList<T>(IList<T> list, int offset, int count) where T : unmanaged
+    public void WriteIList<T>(IList<T> list, int count, int offset = 0) where T : unmanaged
     {
         for (int i = 0; i < count; i++) Write(list[i + offset]);
     }
@@ -213,9 +224,6 @@ public sealed class BinaryViewWriter : StreamStackUser
 
     private byte[] GetEncodingBytes(string input, Encoding encoding)
     {
-        if (encoding == null)
-            encoding = Encoding;
-
         if (ValidateEncoding)
         {
             var bytes = encoding.GetBytes(input);
@@ -300,7 +308,7 @@ public sealed class BinaryViewWriter : StreamStackUser
             throw new InvalidOperationException("CustomLengthPrefixHandler is not set.");
 
         CustomLengthPrefixHandler.Length = length;
-        CustomLengthPrefixHandler.WriteToView(this);
+        WriteIView(CustomLengthPrefixHandler);
     }
 
     public void WriteLengthPrefix(long length) => WriteLengthPrefix(length, LengthPrefix);
@@ -394,6 +402,7 @@ public sealed class BinaryViewWriter : StreamStackUser
             if (disposing)
             {
                 StreamStack.Dispose();
+                BufferSize = 0;
             }
 
             DisposedValue = true;

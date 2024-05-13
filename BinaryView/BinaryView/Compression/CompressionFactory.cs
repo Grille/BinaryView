@@ -3,7 +3,7 @@ using System.IO;
 using System.IO.Compression;
 
 
-namespace GGL.IO.Compression;
+namespace Grille.IO.Compression;
 internal static class CompressionFactory
 {
     public static Stream CreateDecompresser(CompressionType type, Stream baseStream, bool leaveOpen) => type switch

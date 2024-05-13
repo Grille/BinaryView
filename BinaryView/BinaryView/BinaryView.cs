@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.Text;
 using System.IO;
+using Grille.IO.Interfaces;
+using Grille.IO.Internal;
 
-namespace GGL.IO;
+namespace Grille.IO;
 public sealed class BinaryView : StreamStackUser
 {
     public readonly bool OwnsStreamStack;
@@ -93,14 +95,6 @@ public sealed class BinaryView : StreamStackUser
             Writer.WriteFromPtr(ptr, size);
     }
 
-    public unsafe void StructPtr<T>(void* ptr, int size, int offset) where T : unmanaged
-    {
-        if (Mode == ViewMode.Read)
-            Reader.ReadToPtr(ptr, size, offset);
-        else
-            Writer.WriteFromPtr(ptr, size, offset);
-    }
-
     public void Boolean(ref bool value) => Struct(ref value);
     public void Char(ref char value) => Struct(ref value);
     public void SByte(ref sbyte value) => Struct(ref value);
@@ -156,7 +150,17 @@ public sealed class BinaryView : StreamStackUser
             Writer.WriteIList(list, offset, count);
     }
 
-    public void IView<T>(T obj) where T : class, IViewObject
+    public void ICollection<T>(ICollection<T> collection) where T : unmanaged => ICollection(collection, LengthPrefix);
+
+    public void ICollection<T>(ICollection<T> collection, LengthPrefix lengthPrefix) where T : unmanaged
+    {
+        if (Mode == ViewMode.Read)
+            Reader.ReadToICollection(collection, lengthPrefix);
+        else
+            Writer.WriteICollection(collection, lengthPrefix);
+    }
+
+    public void IView<T>(T obj) where T : class, IBinaryViewObject
     {
         if (Mode == ViewMode.Read)
             Reader.ReadToIView(obj);

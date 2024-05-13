@@ -1,4 +1,4 @@
-﻿namespace GGL.IO.Compression;
+﻿namespace Grille.IO.Compression;
 
 public enum CompressionType
 {

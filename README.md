@@ -7,13 +7,12 @@ This library basically provides more advanced versions of the [`System.IO.Binary
 [Documentation](https://github.com/Grille/BinaryView/wiki)
 
 ## Features
-* Symmetrical write/read functions.
+* Asymmetrical and Symmetrical write/read functions.
 * Simple to use string functions with encoding options.
 * Generic functions to write whole lists and (unmanaged) structs.
 * Easy compresion/decompresion of sections or whole stream's with GZip, Deflate, Brotli or ZLib.
-* Support of ISerializable, (when ISerializable is not implemented, the size is usually pretty bloated in comparision to other functions.)
-* Smart list-length prefixes depending on array size. (42 takes 1 byte, 3000 takes 2 etc.)
-* Separate support for byte and bit endianness/order.
+* Smart length prefixes depending on size. (42 takes 1 byte, 3000 takes 2 etc.)
+* Support for byte endianness and bit order.
 
 ## Example Write/Read (asymmetrical)
 ```cs

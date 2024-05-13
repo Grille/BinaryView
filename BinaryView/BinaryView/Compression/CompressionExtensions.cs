@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO.Compression;
 
-namespace GGL.IO.Compression;
+namespace Grille.IO.Compression;
 
 
 
@@ -14,8 +14,10 @@ public static class CompressionExtensions
         br.StreamStack.Push(new DecompressorStackEntry(br, type, br.Remaining));
     }
 
+    public static DecompressorStackEntry BeginCompressedSection(this BinaryViewReader br, CompressionType type) => BeginCompressedSection(br, type, br.LengthPrefix);
+
     /// <summary>Decompress data with CompressionStream, position will reset</summary>
-    public static DecompressorStackEntry BeginCompressedSection(this BinaryViewReader br, CompressionType type, LengthPrefix lengthPrefix = LengthPrefix.Default)
+    public static DecompressorStackEntry BeginCompressedSection(this BinaryViewReader br, CompressionType type, LengthPrefix lengthPrefix)
     {
         long length = br.ReadLengthPrefix(lengthPrefix);
         return br.BeginCompressedSection(type, length);
@@ -43,10 +45,10 @@ public static class CompressionExtensions
         bw.StreamStack.Push(entry);
     }
 
-    public static CompressorStackEntry BeginCompressedSection(this BinaryViewWriter bw, CompressionType type, LengthPrefix lengthPrefix = LengthPrefix.Default)
-        => BeginCompressedSection(bw, type, CompressionLevel.Optimal, lengthPrefix);
+    public static CompressorStackEntry BeginCompressedSection(this BinaryViewWriter bw, CompressionType type) 
+        => BeginCompressedSection(bw, type, bw.LengthPrefix, CompressionLevel.Optimal);
 
-    public static CompressorStackEntry BeginCompressedSection(this BinaryViewWriter bw, CompressionType type, CompressionLevel level, LengthPrefix lengthPrefix = LengthPrefix.Default)
+    public static CompressorStackEntry BeginCompressedSection(this BinaryViewWriter bw, CompressionType type, LengthPrefix lengthPrefix = LengthPrefix.Default, CompressionLevel level = CompressionLevel.Optimal)
     {
         var entry = new CompressorStackEntry(bw, type, level, lengthPrefix);
         bw.StreamStack.Push(entry);
@@ -70,15 +72,15 @@ public static class CompressionExtensions
             view.Writer!.CompressAll(type, level);
     }
 
-    public static void BeginCompressedSection(this BinaryView view, CompressionType type, LengthPrefix prefix = LengthPrefix.Default)
-        => BeginCompressedSection(view, type, CompressionLevel.Optimal, prefix);
+    public static void BeginCompressedSection(this BinaryView view, CompressionType type)
+        => BeginCompressedSection(view, type, view.LengthPrefix, CompressionLevel.Optimal);
 
-    public static void BeginCompressedSection(this BinaryView view, CompressionType type, CompressionLevel level, LengthPrefix prefix = LengthPrefix.Default)
+    public static void BeginCompressedSection(this BinaryView view, CompressionType type, LengthPrefix prefix = LengthPrefix.Default, CompressionLevel level = CompressionLevel.Optimal)
     {
         if (view.Mode == ViewMode.Read)
             view.Reader!.BeginCompressedSection(type, prefix);
         else
-            view.Writer!.BeginCompressedSection(type, level, prefix);
+            view.Writer!.BeginCompressedSection(type, prefix, level);
     }
 
     public static void EndCompressedSection(this BinaryView view)

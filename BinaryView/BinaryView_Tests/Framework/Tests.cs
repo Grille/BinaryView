@@ -3,18 +3,19 @@ using System.Drawing;
 using System.IO;
 using System.Runtime.Serialization;
 using System.Collections.Generic;
-using GGL.IO;
 using System.Diagnostics;
 using System.Threading;
 using System.Text;
 using BinaryView_Tests.Framework;
+using Grille.IO.Interfaces;
 
 namespace BinaryView_Tests;
 
 static class Tests
 {
-    public static void WriteReadPrimitive<T>(string typeName, T value1, T value2)
+    public static void WriteReadPrimitive<T>(T value1, T value2)
     {
+        var typeName = typeof(T).Name;
         testTyp(typeName, value1);
         testTyp(typeName, value2);
     }
@@ -134,7 +135,7 @@ static class Tests
             var bw = data.Writer;
             var br = data.Reader;
 
-            var endianness = pattern[0] == 'L' ? GGL.IO.Endianness.LittleEndian : GGL.IO.Endianness.BigEndian;
+            var endianness = pattern[0] == 'L' ? Grille.IO.Endianness.LittleEndian : Grille.IO.Endianness.BigEndian;
             bool reverseBits = pattern[1] == '1' ? true : false;
 
             bw.Endianness = br.Endianness = endianness;
@@ -203,7 +204,7 @@ static class Tests
     {
         Test($"read/write {typeof(T).Name} ({input})", () =>
         {
-            Warn("Obsolete");
+            Warn("Skip/Obsolete");
             /*
             using var data = new TestData();
             var bw = data.Writer;

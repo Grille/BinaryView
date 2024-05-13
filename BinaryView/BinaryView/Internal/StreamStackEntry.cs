@@ -4,7 +4,7 @@ using System.Text;
 using System.IO;
 using System.Runtime.CompilerServices;
 
-namespace GGL.IO;
+namespace Grille.IO.Internal;
 public class StreamStackEntry : IDisposable
 {
     public StreamStack Owner { get; }
@@ -14,7 +14,7 @@ public class StreamStackEntry : IDisposable
     public bool IsPeak => Owner.Peak == this;
 
     public bool IsDisposed => disposedValue;
-    
+
 
     public StreamStackEntry(StreamStack owner, Stream stream, bool leaveOpen)
     {
